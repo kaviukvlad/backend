@@ -220,105 +220,14 @@ exports.Prisma.SortOrder = {
   desc: 'desc'
 };
 
+exports.Prisma.QueryMode = {
+  default: 'default',
+  insensitive: 'insensitive'
+};
+
 exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
-};
-
-exports.Prisma.UserOrderByRelevanceFieldEnum = {
-  id: 'id',
-  email: 'email',
-  password: 'password',
-  phone: 'phone'
-};
-
-exports.Prisma.DriverProfileOrderByRelevanceFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  name: 'name',
-  regionId: 'regionId'
-};
-
-exports.Prisma.AdminProfileOrderByRelevanceFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  name: 'name'
-};
-
-exports.Prisma.ClientProfileOrderByRelevanceFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  name: 'name'
-};
-
-exports.Prisma.CarOrderByRelevanceFieldEnum = {
-  id: 'id',
-  driverId: 'driverId',
-  vehicle_type_id: 'vehicle_type_id',
-  brand: 'brand',
-  model: 'model',
-  color: 'color',
-  license_plate: 'license_plate'
-};
-
-exports.Prisma.VehicleMediaOrderByRelevanceFieldEnum = {
-  id: 'id',
-  carId: 'carId',
-  url: 'url'
-};
-
-exports.Prisma.OrderOrderByRelevanceFieldEnum = {
-  id: 'id',
-  clientId: 'clientId',
-  regionId: 'regionId',
-  driverId: 'driverId',
-  car_id: 'car_id',
-  name: 'name',
-  from_address: 'from_address',
-  to_address: 'to_address',
-  currency: 'currency',
-  notes: 'notes',
-  flight_number: 'flight_number'
-};
-
-exports.Prisma.RatingOrderByRelevanceFieldEnum = {
-  id: 'id',
-  order_id: 'order_id',
-  driverId: 'driverId',
-  clientId: 'clientId',
-  comment: 'comment'
-};
-
-exports.Prisma.DocumentOrderByRelevanceFieldEnum = {
-  id: 'id',
-  driverId: 'driverId',
-  file_url: 'file_url'
-};
-
-exports.Prisma.AuditLogOrderByRelevanceFieldEnum = {
-  id: 'id',
-  adminId: 'adminId',
-  action: 'action',
-  target_entity: 'target_entity',
-  target_id: 'target_id'
-};
-
-exports.Prisma.RegionOrderByRelevanceFieldEnum = {
-  id: 'id',
-  parent_id: 'parent_id',
-  name: 'name'
-};
-
-exports.Prisma.VehicleTypeOrderByRelevanceFieldEnum = {
-  id: 'id',
-  name: 'name'
-};
-
-exports.Prisma.RegionTranslationOrderByRelevanceFieldEnum = {
-  id: 'id',
-  region_id: 'region_id',
-  locale: 'locale',
-  name: 'name'
 };
 exports.UserRole = exports.$Enums.UserRole = {
   USER: 'USER',
@@ -418,8 +327,7 @@ const config = {
   "datasourceNames": [
     "db"
   ],
-  "activeProvider": "mysql",
-  "postinstall": false,
+  "activeProvider": "postgresql",
   "inlineDatasources": {
     "db": {
       "url": {
@@ -428,8 +336,8 @@ const config = {
       }
     }
   },
-  "inlineSchema": "generator client {\n  provider = \"prisma-client-js\"\n  output   = \"generated/client\"\n}\n\ndatasource db {\n  provider = \"mysql\"\n  url      = env(\"DATABASE_URL\")\n}\n\nenum UserRole {\n  USER\n  DRIVER\n  ADMIN\n  SUPERADMIN\n}\n\nenum DocumentStatus {\n  PENDING\n  APPROVED\n  REJECTED\n}\n\nenum VehicleVerificationStatus {\n  PENDING\n  APPROVED\n  REJECTED\n}\n\nenum OrderStatus {\n  NEW\n  ACCEPTED\n  IN_PROGRESS\n  COMPLETED\n  CANCELLED\n}\n\nenum RegionType {\n  COUNTRY\n  CITY\n  AIRPORT\n  LOCATION\n}\n\nenum MediaType {\n  PHOTO\n  VIDEO\n}\n\nenum DocumentType {\n  DRIVERS_LICENSE\n  VEHICLE_REGISTRATION\n  SELFIE_WITH_LICENSE\n}\n\nmodel User {\n  id        String   @id @default(cuid())\n  email     String   @unique\n  password  String\n  phone     String?  @unique\n  role      UserRole\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  driverProfile DriverProfile?\n  adminProfile  AdminProfile?\n  clientProfile ClientProfile?\n}\n\nmodel DriverProfile {\n  id     String @id @default(cuid())\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n  userId String @unique\n\n  name     String?\n  region   Region? @relation(fields: [regionId], references: [id])\n  regionId String?\n  rating   Float   @default(5.0)\n  status   Int     @default(0)\n\n  cars      Car[]\n  documents Document[]\n  orders    Order[]\n  ratings   Rating[]\n}\n\nmodel AdminProfile {\n  id     String @id @default(cuid())\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n  userId String @unique\n\n  name String?\n\n  audit_logs AuditLog[]\n}\n\nmodel ClientProfile {\n  id     String @id @default(cuid())\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n  userId String @unique\n\n  name String?\n\n  orders  Order[]\n  ratings Rating[]\n}\n\nmodel Car {\n  id                  String                    @id @default(cuid())\n  driver              DriverProfile             @relation(fields: [driverId], references: [id])\n  driverId            String\n  vehicle_type        VehicleType               @relation(fields: [vehicle_type_id], references: [id])\n  vehicle_type_id     String\n  brand               String\n  model               String\n  year                Int\n  color               String?\n  license_plate       String                    @unique\n  verification_status VehicleVerificationStatus @default(PENDING)\n  orders              Order[]\n  media               VehicleMedia[]\n}\n\nmodel VehicleMedia {\n  id        String    @id @default(cuid())\n  car       Car       @relation(fields: [carId], references: [id], onDelete: Cascade)\n  carId     String\n  url       String\n  type      MediaType\n  createdAt DateTime  @default(now())\n}\n\nmodel Order {\n  id       String         @id @default(cuid())\n  client   ClientProfile? @relation(fields: [clientId], references: [id])\n  clientId String?\n\n  region   Region? @relation(fields: [regionId], references: [id])\n  regionId String?\n\n  driver   DriverProfile? @relation(fields: [driverId], references: [id])\n  driverId String?\n  car      Car?           @relation(fields: [car_id], references: [id])\n  car_id   String?\n\n  name            String?\n  from_address    String      @db.Text\n  to_address      String      @db.Text\n  distance        Float?\n  price           Decimal     @db.Decimal(10, 2)\n  currency        String      @default(\"EUR\")\n  status          OrderStatus @default(NEW)\n  trip_datetime   DateTime\n  notes           String?     @db.Text\n  passenger_count Int\n  flight_number   String?\n  rating          Rating?\n}\n\nmodel Rating {\n  id        String        @id @default(cuid())\n  order     Order         @relation(fields: [order_id], references: [id])\n  order_id  String        @unique\n  driver    DriverProfile @relation(fields: [driverId], references: [id])\n  driverId  String\n  client    ClientProfile @relation(fields: [clientId], references: [id])\n  clientId  String\n  score     Int\n  comment   String?       @db.Text\n  createdAt DateTime      @default(now())\n}\n\nmodel Document {\n  id         String         @id @default(cuid())\n  driver     DriverProfile  @relation(fields: [driverId], references: [id])\n  driverId   String\n  type       DocumentType\n  file_url   String\n  status     DocumentStatus @default(PENDING)\n  expires_at DateTime?\n\n  @@unique([driverId, type])\n}\n\nmodel AuditLog {\n  id            String       @id @default(cuid())\n  admin         AdminProfile @relation(fields: [adminId], references: [id])\n  adminId       String\n  action        String\n  target_entity String?\n  target_id     String?\n  created_at    DateTime     @default(now())\n}\n\nmodel Region {\n  id           String              @id @default(cuid())\n  parent       Region?             @relation(\"RegionHierarchy\", fields: [parent_id], references: [id])\n  parent_id    String?\n  name         String\n  type         RegionType\n  latitude     Float?\n  longitude    Float?\n  children     Region[]            @relation(\"RegionHierarchy\")\n  drivers      DriverProfile[]\n  translations RegionTranslation[]\n  orders       Order[]\n}\n\nmodel VehicleType {\n  id                   String @id @default(cuid())\n  name                 String @unique\n  max_passengers       Int\n  max_luggage_standard Int\n  max_luggage_small    Int\n  cars                 Car[]\n}\n\nmodel RegionTranslation {\n  id        String @id @default(cuid())\n  region    Region @relation(fields: [region_id], references: [id])\n  region_id String\n  locale    String\n  name      String\n\n  @@unique([region_id, locale])\n}\n",
-  "inlineSchemaHash": "2dc0e6b1a97f17578024d2cabd5fb5a243ef19a237ff4d8715815bb92f8501af",
+  "inlineSchema": "generator client {\n  provider = \"prisma-client-js\"\n  output   = \"generated/client\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\nenum UserRole {\n  USER\n  DRIVER\n  ADMIN\n  SUPERADMIN\n}\n\nenum DocumentStatus {\n  PENDING\n  APPROVED\n  REJECTED\n}\n\nenum VehicleVerificationStatus {\n  PENDING\n  APPROVED\n  REJECTED\n}\n\nenum OrderStatus {\n  NEW\n  ACCEPTED\n  IN_PROGRESS\n  COMPLETED\n  CANCELLED\n}\n\nenum RegionType {\n  COUNTRY\n  CITY\n  AIRPORT\n  LOCATION\n}\n\nenum MediaType {\n  PHOTO\n  VIDEO\n}\n\nenum DocumentType {\n  DRIVERS_LICENSE\n  VEHICLE_REGISTRATION\n  SELFIE_WITH_LICENSE\n}\n\nmodel User {\n  id        String   @id @default(cuid())\n  email     String   @unique\n  password  String\n  phone     String?  @unique\n  role      UserRole\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  driverProfile DriverProfile?\n  adminProfile  AdminProfile?\n  clientProfile ClientProfile?\n}\n\nmodel DriverProfile {\n  id     String @id @default(cuid())\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n  userId String @unique\n\n  name     String?\n  region   Region? @relation(fields: [regionId], references: [id])\n  regionId String?\n  rating   Float   @default(5.0)\n  status   Int     @default(0)\n\n  cars      Car[]\n  documents Document[]\n  orders    Order[]\n  ratings   Rating[]\n}\n\nmodel AdminProfile {\n  id     String @id @default(cuid())\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n  userId String @unique\n\n  name String?\n\n  audit_logs AuditLog[]\n}\n\nmodel ClientProfile {\n  id     String @id @default(cuid())\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n  userId String @unique\n\n  name String?\n\n  orders  Order[]\n  ratings Rating[]\n}\n\nmodel Car {\n  id                  String                    @id @default(cuid())\n  driver              DriverProfile             @relation(fields: [driverId], references: [id])\n  driverId            String\n  vehicle_type        VehicleType               @relation(fields: [vehicle_type_id], references: [id])\n  vehicle_type_id     String\n  brand               String\n  model               String\n  year                Int\n  color               String?\n  license_plate       String                    @unique\n  verification_status VehicleVerificationStatus @default(PENDING)\n  orders              Order[]\n  media               VehicleMedia[]\n}\n\nmodel VehicleMedia {\n  id        String    @id @default(cuid())\n  car       Car       @relation(fields: [carId], references: [id], onDelete: Cascade)\n  carId     String\n  url       String\n  type      MediaType\n  createdAt DateTime  @default(now())\n}\n\nmodel Order {\n  id       String         @id @default(cuid())\n  client   ClientProfile? @relation(fields: [clientId], references: [id])\n  clientId String?\n\n  region   Region? @relation(fields: [regionId], references: [id])\n  regionId String?\n\n  driver   DriverProfile? @relation(fields: [driverId], references: [id])\n  driverId String?\n  car      Car?           @relation(fields: [car_id], references: [id])\n  car_id   String?\n\n  name            String?\n  from_address    String      @db.Text\n  to_address      String      @db.Text\n  distance        Float?\n  price           Decimal     @db.Decimal(10, 2)\n  currency        String      @default(\"EUR\")\n  status          OrderStatus @default(NEW)\n  trip_datetime   DateTime\n  notes           String?     @db.Text\n  passenger_count Int\n  flight_number   String?\n  rating          Rating?\n}\n\nmodel Rating {\n  id        String        @id @default(cuid())\n  order     Order         @relation(fields: [order_id], references: [id])\n  order_id  String        @unique\n  driver    DriverProfile @relation(fields: [driverId], references: [id])\n  driverId  String\n  client    ClientProfile @relation(fields: [clientId], references: [id])\n  clientId  String\n  score     Int\n  comment   String?       @db.Text\n  createdAt DateTime      @default(now())\n}\n\nmodel Document {\n  id         String         @id @default(cuid())\n  driver     DriverProfile  @relation(fields: [driverId], references: [id])\n  driverId   String\n  type       DocumentType\n  file_url   String\n  status     DocumentStatus @default(PENDING)\n  expires_at DateTime?\n\n  @@unique([driverId, type])\n}\n\nmodel AuditLog {\n  id            String       @id @default(cuid())\n  admin         AdminProfile @relation(fields: [adminId], references: [id])\n  adminId       String\n  action        String\n  target_entity String?\n  target_id     String?\n  created_at    DateTime     @default(now())\n}\n\nmodel Region {\n  id           String              @id @default(cuid())\n  parent       Region?             @relation(\"RegionHierarchy\", fields: [parent_id], references: [id])\n  parent_id    String?\n  name         String\n  type         RegionType\n  latitude     Float?\n  longitude    Float?\n  children     Region[]            @relation(\"RegionHierarchy\")\n  drivers      DriverProfile[]\n  translations RegionTranslation[]\n  orders       Order[]\n}\n\nmodel VehicleType {\n  id                   String @id @default(cuid())\n  name                 String @unique\n  max_passengers       Int\n  max_luggage_standard Int\n  max_luggage_small    Int\n  cars                 Car[]\n}\n\nmodel RegionTranslation {\n  id        String @id @default(cuid())\n  region    Region @relation(fields: [region_id], references: [id])\n  region_id String\n  locale    String\n  name      String\n\n  @@unique([region_id, locale])\n}\n",
+  "inlineSchemaHash": "2475042d6e753a4cbc1d96b43376871e8b3a899fc054128eef1a899e4cdb0a69",
   "copyEngine": true
 }
 

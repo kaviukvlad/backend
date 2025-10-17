@@ -247,105 +247,14 @@ exports.Prisma.SortOrder = {
   desc: 'desc'
 };
 
+exports.Prisma.QueryMode = {
+  default: 'default',
+  insensitive: 'insensitive'
+};
+
 exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
-};
-
-exports.Prisma.UserOrderByRelevanceFieldEnum = {
-  id: 'id',
-  email: 'email',
-  password: 'password',
-  phone: 'phone'
-};
-
-exports.Prisma.DriverProfileOrderByRelevanceFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  name: 'name',
-  regionId: 'regionId'
-};
-
-exports.Prisma.AdminProfileOrderByRelevanceFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  name: 'name'
-};
-
-exports.Prisma.ClientProfileOrderByRelevanceFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  name: 'name'
-};
-
-exports.Prisma.CarOrderByRelevanceFieldEnum = {
-  id: 'id',
-  driverId: 'driverId',
-  vehicle_type_id: 'vehicle_type_id',
-  brand: 'brand',
-  model: 'model',
-  color: 'color',
-  license_plate: 'license_plate'
-};
-
-exports.Prisma.VehicleMediaOrderByRelevanceFieldEnum = {
-  id: 'id',
-  carId: 'carId',
-  url: 'url'
-};
-
-exports.Prisma.OrderOrderByRelevanceFieldEnum = {
-  id: 'id',
-  clientId: 'clientId',
-  regionId: 'regionId',
-  driverId: 'driverId',
-  car_id: 'car_id',
-  name: 'name',
-  from_address: 'from_address',
-  to_address: 'to_address',
-  currency: 'currency',
-  notes: 'notes',
-  flight_number: 'flight_number'
-};
-
-exports.Prisma.RatingOrderByRelevanceFieldEnum = {
-  id: 'id',
-  order_id: 'order_id',
-  driverId: 'driverId',
-  clientId: 'clientId',
-  comment: 'comment'
-};
-
-exports.Prisma.DocumentOrderByRelevanceFieldEnum = {
-  id: 'id',
-  driverId: 'driverId',
-  file_url: 'file_url'
-};
-
-exports.Prisma.AuditLogOrderByRelevanceFieldEnum = {
-  id: 'id',
-  adminId: 'adminId',
-  action: 'action',
-  target_entity: 'target_entity',
-  target_id: 'target_id'
-};
-
-exports.Prisma.RegionOrderByRelevanceFieldEnum = {
-  id: 'id',
-  parent_id: 'parent_id',
-  name: 'name'
-};
-
-exports.Prisma.VehicleTypeOrderByRelevanceFieldEnum = {
-  id: 'id',
-  name: 'name'
-};
-
-exports.Prisma.RegionTranslationOrderByRelevanceFieldEnum = {
-  id: 'id',
-  region_id: 'region_id',
-  locale: 'locale',
-  name: 'name'
 };
 exports.UserRole = exports.$Enums.UserRole = {
   USER: 'USER',
