@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "generated/client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  DRIVER
+  ADMIN
+  SUPERADMIN
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum VehicleVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum OrderStatus {
+  NEW
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum RegionType {
+  COUNTRY
+  CITY
+  AIRPORT
+  LOCATION
+}
+
+enum MediaType {
+  PHOTO
+  VIDEO
+}
+
+enum DocumentType {
+  DRIVERS_LICENSE
+  VEHICLE_REGISTRATION
+  SELFIE_WITH_LICENSE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  phone     String?  @unique
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  driverProfile DriverProfile?
+  adminProfile  AdminProfile?
+  clientProfile ClientProfile?
+}
+
+model DriverProfile {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
+
+  name     String?
+  region   Region? @relation(fields: [regionId], references: [id])
+  regionId String?
+  rating   Float   @default(5.0)
+  status   Int     @default(0)
+
+  cars      Car[]
+  documents Document[]
+  orders    Order[]
+  ratings   Rating[]
+}
+
+model AdminProfile {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
+
+  name String?
+
+  audit_logs AuditLog[]
+}
+
+model ClientProfile {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
+
+  name String?
+
+  orders  Order[]
+  ratings Rating[]
+}
+
+model Car {
+  id                  String                    @id @default(cuid())
+  driver              DriverProfile             @relation(fields: [driverId], references: [id])
+  driverId            String
+  vehicle_type        VehicleType               @relation(fields: [vehicle_type_id], references: [id])
+  vehicle_type_id     String
+  brand               String
+  model               String
+  year                Int
+  color               String?
+  license_plate       String                    @unique
+  verification_status VehicleVerificationStatus @default(PENDING)
+  orders              Order[]
+  media               VehicleMedia[]
+}
+
+model VehicleMedia {
+  id        String    @id @default(cuid())
+  car       Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+  carId     String
+  url       String
+  type      MediaType
+  createdAt DateTime  @default(now())
+}
+
+model Order {
+  id       String         @id @default(cuid())
+  client   ClientProfile? @relation(fields: [clientId], references: [id])
+  clientId String?
+
+  region   Region? @relation(fields: [regionId], references: [id])
+  regionId String?
+
+  driver   DriverProfile? @relation(fields: [driverId], references: [id])
+  driverId String?
+  car      Car?           @relation(fields: [car_id], references: [id])
+  car_id   String?
+
+  name            String?
+  from_address    String      @db.Text
+  to_address      String      @db.Text
+  distance        Float?
+  price           Decimal     @db.Decimal(10, 2)
+  currency        String      @default("EUR")
+  status          OrderStatus @default(NEW)
+  trip_datetime   DateTime
+  notes           String?     @db.Text
+  passenger_count Int
+  flight_number   String?
+  rating          Rating?
+}
+
+model Rating {
+  id        String        @id @default(cuid())
+  order     Order         @relation(fields: [order_id], references: [id])
+  order_id  String        @unique
+  driver    DriverProfile @relation(fields: [driverId], references: [id])
+  driverId  String
+  client    ClientProfile @relation(fields: [clientId], references: [id])
+  clientId  String
+  score     Int
+  comment   String?       @db.Text
+  createdAt DateTime      @default(now())
+}
+
+model Document {
+  id         String         @id @default(cuid())
+  driver     DriverProfile  @relation(fields: [driverId], references: [id])
+  driverId   String
+  type       DocumentType
+  file_url   String
+  status     DocumentStatus @default(PENDING)
+  expires_at DateTime?
+
+  @@unique([driverId, type])
+}
+
+model AuditLog {
+  id            String       @id @default(cuid())
+  admin         AdminProfile @relation(fields: [adminId], references: [id])
+  adminId       String
+  action        String
+  target_entity String?
+  target_id     String?
+  created_at    DateTime     @default(now())
+}
+
+model Region {
+  id           String              @id @default(cuid())
+  parent       Region?             @relation("RegionHierarchy", fields: [parent_id], references: [id])
+  parent_id    String?
+  name         String
+  type         RegionType
+  latitude     Float?
+  longitude    Float?
+  children     Region[]            @relation("RegionHierarchy")
+  drivers      DriverProfile[]
+  translations RegionTranslation[]
+  orders       Order[]
+}
+
+model VehicleType {
+  id                   String @id @default(cuid())
+  name                 String @unique
+  max_passengers       Int
+  max_luggage_standard Int
+  max_luggage_small    Int
+  cars                 Car[]
+}
+
+model RegionTranslation {
+  id        String @id @default(cuid())
+  region    Region @relation(fields: [region_id], references: [id])
+  region_id String
+  locale    String
+  name      String
+
+  @@unique([region_id, locale])
+}
