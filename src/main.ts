@@ -10,7 +10,7 @@ async function bootstrap() {
 	app.setGlobalPrefix('api')
 	app.use(cookieParser())
 	app.enableCors({
-		origin: ['http://localhost:3001'],
+		origin: ['http://localhost:3000'],
 		credentials: true,
 		exposedHeaders: 'set-cookie'
 	})
@@ -18,8 +18,6 @@ async function bootstrap() {
 		prefix: '/uploads/'
 	})
 
-	const port = process.env.PORT || 3000
-
-	await app.listen(port)
+	await app.listen(3000)
 }
 bootstrap()
