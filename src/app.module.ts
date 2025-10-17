@@ -10,7 +10,9 @@ import { VehicleTypeModule } from './vehicle-type/vehicle-type.module'
 
 @Module({
 	imports: [
-		ConfigModule.forRoot(),
+		ConfigModule.forRoot({
+			isGlobal: true
+		}),
 		AuthModule,
 		DriverModule,
 		UserModule,
