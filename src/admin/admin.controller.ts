@@ -4,18 +4,14 @@ import {
 	Get,
 	Param,
 	Patch,
-	Post,
 	Request,
-	UseGuards,
-	UsePipes,
-	ValidationPipe
+	UseGuards
 } from '@nestjs/common'
 import { UserRole } from 'prisma/generated/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { Roles } from 'src/auth/decorators/roles.decorator'
 import { RolesGuard } from 'src/auth/guard/roles.guard'
 import { AdminService } from './admin.service'
-import { CreateOrderDto } from './dto/create-order.dto'
 import { UpdateCarStatusDto } from './dto/update-car-status.dto'
 import { UpdateDocumentStatusDto } from './dto/update-document-status.dto'
 
@@ -98,14 +94,5 @@ export class AdminController {
 			dto.status,
 			adminUserId
 		)
-	}
-
-	@Post('orders')
-	@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
-	@UseGuards(RolesGuard)
-	@Auth()
-	@UsePipes(new ValidationPipe())
-	async createOrder(@Body() createOrderDto: CreateOrderDto, @Request() req) {
-		return this.adminService.createOrder(createOrderDto, req.user.id)
 	}
 }

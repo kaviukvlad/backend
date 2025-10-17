@@ -143,6 +143,12 @@ model Order {
   car      Car?           @relation(fields: [car_id], references: [id])
   car_id   String?
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  luggage_standard Int @default(0)
+  luggage_small    Int @default(0)
+
   name            String?
   from_address    String      @db.Text
   to_address      String      @db.Text

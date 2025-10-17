@@ -20,6 +20,7 @@ import { CurrentDriver } from 'src/auth/decorators/driver.decorators'
 import { CreateCarDto } from 'src/car/dto/create-car.dto'
 import { UpdateCarDto } from 'src/car/dto/update-car.dto'
 import { DriverService } from './driver.service'
+import { UpdateDriverDto } from './dto/update-driver.dto'
 
 @Controller('driver')
 export class DriverController {
@@ -29,6 +30,23 @@ export class DriverController {
 	@Auth()
 	async getProfile(@CurrentDriver('id') id: string) {
 		return this.driverService.getById(id)
+	}
+
+	@Patch('profile')
+	@Auth()
+	@HttpCode(HttpStatus.OK)
+	async updateMyProfile(
+		@CurrentDriver('id') driverId: string,
+		@Body() dto: UpdateDriverDto
+	) {
+		return this.driverService.updateProfile(driverId, dto)
+	}
+
+	@Delete('profile')
+	@Auth()
+	@HttpCode(HttpStatus.NO_CONTENT)
+	async deleteMyProfile(@CurrentDriver('id') driverId: string) {
+		return this.driverService.deleteMyProfile(driverId)
 	}
 
 	@Get('cars')
@@ -157,5 +175,46 @@ export class DriverController {
 		@Param('id') orderId: string
 	) {
 		return this.driverService.acceptOrder(driverId, orderId)
+	}
+
+	@Get('orders/current')
+	@Auth()
+	@HttpCode(HttpStatus.OK)
+	async getMyCurrentOrders(@CurrentDriver('id') driverId: string) {
+		return this.driverService.getMyCurrentOrders(driverId)
+	}
+
+	@Get('orders/completed')
+	@Auth()
+	@HttpCode(HttpStatus.OK)
+	async getMyCompletedOrders(@CurrentDriver('id') driverId: string) {
+		return this.driverService.getMyCompletedOrders(driverId)
+	}
+
+	@Patch('orders/:id/start')
+	@Auth()
+	@HttpCode(HttpStatus.OK)
+	async startOrder(
+		@CurrentDriver('id') driverId: string,
+		@Param('id') orderId: string
+	) {
+		return this.driverService.startOrder(driverId, orderId)
+	}
+
+	@Patch('orders/:id/complete')
+	@Auth()
+	@HttpCode(HttpStatus.OK)
+	async completeOrder(
+		@CurrentDriver('id') driverId: string,
+		@Param('id') orderId: string
+	) {
+		return this.driverService.completeOrder(driverId, orderId)
+	}
+
+	@Get('earnings')
+	@Auth()
+	@HttpCode(HttpStatus.OK)
+	async getMyEarnings(@CurrentDriver('id') driverId: string) {
+		return this.driverService.getMyEarnings(driverId)
 	}
 }

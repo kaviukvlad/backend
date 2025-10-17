@@ -4,7 +4,6 @@ import {
 	VehicleVerificationStatus
 } from 'prisma/generated/client'
 import { PrismaService } from 'src/prisma.service'
-import { CreateOrderDto } from './dto/create-order.dto'
 
 @Injectable()
 export class AdminService {
@@ -172,36 +171,5 @@ export class AdminService {
 				}
 			}
 		})
-	}
-
-	async createOrder(dto: CreateOrderDto, adminUserId: string) {
-		const regionExists = await this.prisma.region.findUnique({
-			where: { id: dto.regionId }
-		})
-		if (!regionExists) {
-			throw new NotFoundException(`Region with ID ${dto.regionId} not found.`)
-		}
-
-		const newOrder = await this.prisma.order.create({
-			data: {
-				...dto,
-				trip_datetime: new Date(dto.trip_datetime),
-				status: 'NEW'
-			}
-		})
-
-		const adminProfile = await this.prisma.adminProfile.findUniqueOrThrow({
-			where: { userId: adminUserId }
-		})
-		await this.prisma.auditLog.create({
-			data: {
-				adminId: adminProfile.id,
-				action: `Order created #${newOrder.id}`,
-				target_entity: 'Order',
-				target_id: newOrder.id
-			}
-		})
-
-		return newOrder
 	}
 }

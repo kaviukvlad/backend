@@ -37,6 +37,22 @@ export class DriverService {
 		})
 	}
 
+	async deleteMyProfile(driverId: string) {
+		const driverProfile = await this.prisma.driverProfile.findUnique({
+			where: { id: driverId },
+			select: { userId: true }
+		})
+
+		if (!driverProfile) {
+			throw new NotFoundException('Driver profile not found.')
+		}
+
+		await this.prisma.user.delete({
+			where: { id: driverProfile.userId }
+		})
+		return null
+	}
+
 	async getCarsByDriverID(driverId: string) {
 		return this.prisma.car.findMany({
 			where: { driverId }
@@ -229,7 +245,10 @@ export class DriverService {
 			where: { id: driverId },
 			include: {
 				cars: {
-					where: { verification_status: 'APPROVED' }
+					where: { verification_status: 'APPROVED' },
+					include: {
+						vehicle_type: true
+					}
 				}
 			}
 		})
@@ -256,24 +275,112 @@ export class DriverService {
 			)
 		}
 
-		return this.prisma.order.findMany({
+		const ordersInRegion = await this.prisma.order.findMany({
 			where: {
 				status: 'NEW',
 				regionId: driverProfile.regionId
-			},
-			select: {
-				id: true,
-				from_address: true,
-				to_address: true,
-				price: true,
-				trip_datetime: true,
-				passenger_count: true,
-				notes: true,
-				flight_number: true
 			},
 			orderBy: {
 				trip_datetime: 'asc'
 			}
 		})
+
+		const suitableOrders = ordersInRegion.filter(order => {
+			return driverProfile.cars.some(
+				car =>
+					car.vehicle_type.max_luggage_standard >=
+						(order.luggage_standard || 0) &&
+					car.vehicle_type.max_luggage_small >= (order.luggage_small || 0)
+			)
+		})
+
+		return suitableOrders
+	}
+
+	private async verifyOrderOwnership(driverId: string, orderId: string) {
+		const order = await this.prisma.order.findUnique({ where: { id: orderId } })
+
+		if (!order) {
+			throw new NotFoundException('Order not found.')
+		}
+
+		if (order.driverId !== driverId) {
+			throw new ForbiddenException('You do not have permission for this order.')
+		}
+		return order
+	}
+
+	async getMyCurrentOrders(driverId: string) {
+		return this.prisma.order.findMany({
+			where: {
+				driverId,
+				status: {
+					in: ['ACCEPTED', 'IN_PROGRESS']
+				}
+			},
+			orderBy: {
+				trip_datetime: 'asc'
+			}
+		})
+	}
+
+	async getMyCompletedOrders(driverId: string) {
+		return this.prisma.order.findMany({
+			where: {
+				driverId,
+				status: 'COMPLETED'
+			},
+			orderBy: {
+				trip_datetime: 'desc'
+			}
+		})
+	}
+
+	async startOrder(driverId: string, orderId: string) {
+		const order = await this.verifyOrderOwnership(driverId, orderId)
+
+		if (order.status !== 'ACCEPTED') {
+			throw new BadRequestException('You can only start an accepted order.')
+		}
+
+		return this.prisma.order.update({
+			where: { id: orderId },
+			data: { status: 'IN_PROGRESS' }
+		})
+	}
+
+	async completeOrder(driverId: string, orderId: string) {
+		const order = await this.verifyOrderOwnership(driverId, orderId)
+
+		if (order.status !== 'IN_PROGRESS') {
+			throw new BadRequestException(
+				'You can only complete an order that is in progress.'
+			)
+		}
+
+		return this.prisma.order.update({
+			where: { id: orderId },
+			data: { status: 'COMPLETED' }
+		})
+	}
+
+	async getMyEarnings(driverId: string) {
+		const result = await this.prisma.order.aggregate({
+			where: {
+				driverId,
+				status: 'COMPLETED'
+			},
+			_sum: {
+				price: true
+			},
+			_count: {
+				id: true
+			}
+		})
+
+		return {
+			totalEarnings: result._sum.price || 0,
+			completedOrdersCount: result._count.id || 0
+		}
 	}
 }

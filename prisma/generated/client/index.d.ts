@@ -9126,12 +9126,16 @@ export namespace Prisma {
   }
 
   export type OrderAvgAggregateOutputType = {
+    luggage_standard: number | null
+    luggage_small: number | null
     distance: number | null
     price: Decimal | null
     passenger_count: number | null
   }
 
   export type OrderSumAggregateOutputType = {
+    luggage_standard: number | null
+    luggage_small: number | null
     distance: number | null
     price: Decimal | null
     passenger_count: number | null
@@ -9143,6 +9147,10 @@ export namespace Prisma {
     regionId: string | null
     driverId: string | null
     car_id: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+    luggage_standard: number | null
+    luggage_small: number | null
     name: string | null
     from_address: string | null
     to_address: string | null
@@ -9162,6 +9170,10 @@ export namespace Prisma {
     regionId: string | null
     driverId: string | null
     car_id: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+    luggage_standard: number | null
+    luggage_small: number | null
     name: string | null
     from_address: string | null
     to_address: string | null
@@ -9181,6 +9193,10 @@ export namespace Prisma {
     regionId: number
     driverId: number
     car_id: number
+    createdAt: number
+    updatedAt: number
+    luggage_standard: number
+    luggage_small: number
     name: number
     from_address: number
     to_address: number
@@ -9197,12 +9213,16 @@ export namespace Prisma {
 
 
   export type OrderAvgAggregateInputType = {
+    luggage_standard?: true
+    luggage_small?: true
     distance?: true
     price?: true
     passenger_count?: true
   }
 
   export type OrderSumAggregateInputType = {
+    luggage_standard?: true
+    luggage_small?: true
     distance?: true
     price?: true
     passenger_count?: true
@@ -9214,6 +9234,10 @@ export namespace Prisma {
     regionId?: true
     driverId?: true
     car_id?: true
+    createdAt?: true
+    updatedAt?: true
+    luggage_standard?: true
+    luggage_small?: true
     name?: true
     from_address?: true
     to_address?: true
@@ -9233,6 +9257,10 @@ export namespace Prisma {
     regionId?: true
     driverId?: true
     car_id?: true
+    createdAt?: true
+    updatedAt?: true
+    luggage_standard?: true
+    luggage_small?: true
     name?: true
     from_address?: true
     to_address?: true
@@ -9252,6 +9280,10 @@ export namespace Prisma {
     regionId?: true
     driverId?: true
     car_id?: true
+    createdAt?: true
+    updatedAt?: true
+    luggage_standard?: true
+    luggage_small?: true
     name?: true
     from_address?: true
     to_address?: true
@@ -9358,6 +9390,10 @@ export namespace Prisma {
     regionId: string | null
     driverId: string | null
     car_id: string | null
+    createdAt: Date
+    updatedAt: Date
+    luggage_standard: number
+    luggage_small: number
     name: string | null
     from_address: string
     to_address: string
@@ -9396,6 +9432,10 @@ export namespace Prisma {
     regionId?: boolean
     driverId?: boolean
     car_id?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    luggage_standard?: boolean
+    luggage_small?: boolean
     name?: boolean
     from_address?: boolean
     to_address?: boolean
@@ -9420,6 +9460,10 @@ export namespace Prisma {
     regionId?: boolean
     driverId?: boolean
     car_id?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    luggage_standard?: boolean
+    luggage_small?: boolean
     name?: boolean
     from_address?: boolean
     to_address?: boolean
@@ -9443,6 +9487,10 @@ export namespace Prisma {
     regionId?: boolean
     driverId?: boolean
     car_id?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    luggage_standard?: boolean
+    luggage_small?: boolean
     name?: boolean
     from_address?: boolean
     to_address?: boolean
@@ -9466,6 +9514,10 @@ export namespace Prisma {
     regionId?: boolean
     driverId?: boolean
     car_id?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    luggage_standard?: boolean
+    luggage_small?: boolean
     name?: boolean
     from_address?: boolean
     to_address?: boolean
@@ -9479,7 +9531,7 @@ export namespace Prisma {
     flight_number?: boolean
   }
 
-  export type OrderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "clientId" | "regionId" | "driverId" | "car_id" | "name" | "from_address" | "to_address" | "distance" | "price" | "currency" | "status" | "trip_datetime" | "notes" | "passenger_count" | "flight_number", ExtArgs["result"]["order"]>
+  export type OrderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "clientId" | "regionId" | "driverId" | "car_id" | "createdAt" | "updatedAt" | "luggage_standard" | "luggage_small" | "name" | "from_address" | "to_address" | "distance" | "price" | "currency" | "status" | "trip_datetime" | "notes" | "passenger_count" | "flight_number", ExtArgs["result"]["order"]>
   export type OrderInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     client?: boolean | Order$clientArgs<ExtArgs>
     region?: boolean | Order$regionArgs<ExtArgs>
@@ -9515,6 +9567,10 @@ export namespace Prisma {
       regionId: string | null
       driverId: string | null
       car_id: string | null
+      createdAt: Date
+      updatedAt: Date
+      luggage_standard: number
+      luggage_small: number
       name: string | null
       from_address: string
       to_address: string
@@ -9959,6 +10015,10 @@ export namespace Prisma {
     readonly regionId: FieldRef<"Order", 'String'>
     readonly driverId: FieldRef<"Order", 'String'>
     readonly car_id: FieldRef<"Order", 'String'>
+    readonly createdAt: FieldRef<"Order", 'DateTime'>
+    readonly updatedAt: FieldRef<"Order", 'DateTime'>
+    readonly luggage_standard: FieldRef<"Order", 'Int'>
+    readonly luggage_small: FieldRef<"Order", 'Int'>
     readonly name: FieldRef<"Order", 'String'>
     readonly from_address: FieldRef<"Order", 'String'>
     readonly to_address: FieldRef<"Order", 'String'>
@@ -17243,6 +17303,10 @@ export namespace Prisma {
     regionId: 'regionId',
     driverId: 'driverId',
     car_id: 'car_id',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
+    luggage_standard: 'luggage_standard',
+    luggage_small: 'luggage_small',
     name: 'name',
     from_address: 'from_address',
     to_address: 'to_address',
@@ -17926,6 +17990,10 @@ export namespace Prisma {
     regionId?: StringNullableFilter<"Order"> | string | null
     driverId?: StringNullableFilter<"Order"> | string | null
     car_id?: StringNullableFilter<"Order"> | string | null
+    createdAt?: DateTimeFilter<"Order"> | Date | string
+    updatedAt?: DateTimeFilter<"Order"> | Date | string
+    luggage_standard?: IntFilter<"Order"> | number
+    luggage_small?: IntFilter<"Order"> | number
     name?: StringNullableFilter<"Order"> | string | null
     from_address?: StringFilter<"Order"> | string
     to_address?: StringFilter<"Order"> | string
@@ -17950,6 +18018,10 @@ export namespace Prisma {
     regionId?: SortOrderInput | SortOrder
     driverId?: SortOrderInput | SortOrder
     car_id?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    luggage_standard?: SortOrder
+    luggage_small?: SortOrder
     name?: SortOrderInput | SortOrder
     from_address?: SortOrder
     to_address?: SortOrder
@@ -17977,6 +18049,10 @@ export namespace Prisma {
     regionId?: StringNullableFilter<"Order"> | string | null
     driverId?: StringNullableFilter<"Order"> | string | null
     car_id?: StringNullableFilter<"Order"> | string | null
+    createdAt?: DateTimeFilter<"Order"> | Date | string
+    updatedAt?: DateTimeFilter<"Order"> | Date | string
+    luggage_standard?: IntFilter<"Order"> | number
+    luggage_small?: IntFilter<"Order"> | number
     name?: StringNullableFilter<"Order"> | string | null
     from_address?: StringFilter<"Order"> | string
     to_address?: StringFilter<"Order"> | string
@@ -18001,6 +18077,10 @@ export namespace Prisma {
     regionId?: SortOrderInput | SortOrder
     driverId?: SortOrderInput | SortOrder
     car_id?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    luggage_standard?: SortOrder
+    luggage_small?: SortOrder
     name?: SortOrderInput | SortOrder
     from_address?: SortOrder
     to_address?: SortOrder
@@ -18028,6 +18108,10 @@ export namespace Prisma {
     regionId?: StringNullableWithAggregatesFilter<"Order"> | string | null
     driverId?: StringNullableWithAggregatesFilter<"Order"> | string | null
     car_id?: StringNullableWithAggregatesFilter<"Order"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"Order"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"Order"> | Date | string
+    luggage_standard?: IntWithAggregatesFilter<"Order"> | number
+    luggage_small?: IntWithAggregatesFilter<"Order"> | number
     name?: StringNullableWithAggregatesFilter<"Order"> | string | null
     from_address?: StringWithAggregatesFilter<"Order"> | string
     to_address?: StringWithAggregatesFilter<"Order"> | string
@@ -18817,6 +18901,10 @@ export namespace Prisma {
 
   export type OrderCreateInput = {
     id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -18841,6 +18929,10 @@ export namespace Prisma {
     regionId?: string | null
     driverId?: string | null
     car_id?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -18857,6 +18949,10 @@ export namespace Prisma {
 
   export type OrderUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -18881,6 +18977,10 @@ export namespace Prisma {
     regionId?: NullableStringFieldUpdateOperationsInput | string | null
     driverId?: NullableStringFieldUpdateOperationsInput | string | null
     car_id?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -18901,6 +19001,10 @@ export namespace Prisma {
     regionId?: string | null
     driverId?: string | null
     car_id?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -18916,6 +19020,10 @@ export namespace Prisma {
 
   export type OrderUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -18935,6 +19043,10 @@ export namespace Prisma {
     regionId?: NullableStringFieldUpdateOperationsInput | string | null
     driverId?: NullableStringFieldUpdateOperationsInput | string | null
     car_id?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -19842,6 +19954,10 @@ export namespace Prisma {
     regionId?: SortOrder
     driverId?: SortOrder
     car_id?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    luggage_standard?: SortOrder
+    luggage_small?: SortOrder
     name?: SortOrder
     from_address?: SortOrder
     to_address?: SortOrder
@@ -19856,6 +19972,8 @@ export namespace Prisma {
   }
 
   export type OrderAvgOrderByAggregateInput = {
+    luggage_standard?: SortOrder
+    luggage_small?: SortOrder
     distance?: SortOrder
     price?: SortOrder
     passenger_count?: SortOrder
@@ -19867,6 +19985,10 @@ export namespace Prisma {
     regionId?: SortOrder
     driverId?: SortOrder
     car_id?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    luggage_standard?: SortOrder
+    luggage_small?: SortOrder
     name?: SortOrder
     from_address?: SortOrder
     to_address?: SortOrder
@@ -19886,6 +20008,10 @@ export namespace Prisma {
     regionId?: SortOrder
     driverId?: SortOrder
     car_id?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    luggage_standard?: SortOrder
+    luggage_small?: SortOrder
     name?: SortOrder
     from_address?: SortOrder
     to_address?: SortOrder
@@ -19900,6 +20026,8 @@ export namespace Prisma {
   }
 
   export type OrderSumOrderByAggregateInput = {
+    luggage_standard?: SortOrder
+    luggage_small?: SortOrder
     distance?: SortOrder
     price?: SortOrder
     passenger_count?: SortOrder
@@ -21945,6 +22073,10 @@ export namespace Prisma {
 
   export type OrderCreateWithoutDriverInput = {
     id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -21967,6 +22099,10 @@ export namespace Prisma {
     clientId?: string | null
     regionId?: string | null
     car_id?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -22173,6 +22309,10 @@ export namespace Prisma {
     regionId?: StringNullableFilter<"Order"> | string | null
     driverId?: StringNullableFilter<"Order"> | string | null
     car_id?: StringNullableFilter<"Order"> | string | null
+    createdAt?: DateTimeFilter<"Order"> | Date | string
+    updatedAt?: DateTimeFilter<"Order"> | Date | string
+    luggage_standard?: IntFilter<"Order"> | number
+    luggage_small?: IntFilter<"Order"> | number
     name?: StringNullableFilter<"Order"> | string | null
     from_address?: StringFilter<"Order"> | string
     to_address?: StringFilter<"Order"> | string
@@ -22364,6 +22504,10 @@ export namespace Prisma {
 
   export type OrderCreateWithoutClientInput = {
     id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -22386,6 +22530,10 @@ export namespace Prisma {
     regionId?: string | null
     driverId?: string | null
     car_id?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -22557,6 +22705,10 @@ export namespace Prisma {
 
   export type OrderCreateWithoutCarInput = {
     id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -22579,6 +22731,10 @@ export namespace Prisma {
     clientId?: string | null
     regionId?: string | null
     driverId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -23094,6 +23250,10 @@ export namespace Prisma {
 
   export type OrderCreateWithoutRatingInput = {
     id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -23117,6 +23277,10 @@ export namespace Prisma {
     regionId?: string | null
     driverId?: string | null
     car_id?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -23196,6 +23360,10 @@ export namespace Prisma {
 
   export type OrderUpdateWithoutRatingInput = {
     id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -23219,6 +23387,10 @@ export namespace Prisma {
     regionId?: NullableStringFieldUpdateOperationsInput | string | null
     driverId?: NullableStringFieldUpdateOperationsInput | string | null
     car_id?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -23517,6 +23689,10 @@ export namespace Prisma {
 
   export type OrderCreateWithoutRegionInput = {
     id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -23539,6 +23715,10 @@ export namespace Prisma {
     clientId?: string | null
     driverId?: string | null
     car_id?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -23836,6 +24016,10 @@ export namespace Prisma {
     clientId?: string | null
     regionId?: string | null
     car_id?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -23921,6 +24105,10 @@ export namespace Prisma {
 
   export type OrderUpdateWithoutDriverInput = {
     id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -23943,6 +24131,10 @@ export namespace Prisma {
     clientId?: NullableStringFieldUpdateOperationsInput | string | null
     regionId?: NullableStringFieldUpdateOperationsInput | string | null
     car_id?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -23962,6 +24154,10 @@ export namespace Prisma {
     clientId?: NullableStringFieldUpdateOperationsInput | string | null
     regionId?: NullableStringFieldUpdateOperationsInput | string | null
     car_id?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -24039,6 +24235,10 @@ export namespace Prisma {
     regionId?: string | null
     driverId?: string | null
     car_id?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -24063,6 +24263,10 @@ export namespace Prisma {
 
   export type OrderUpdateWithoutClientInput = {
     id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -24085,6 +24289,10 @@ export namespace Prisma {
     regionId?: NullableStringFieldUpdateOperationsInput | string | null
     driverId?: NullableStringFieldUpdateOperationsInput | string | null
     car_id?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -24104,6 +24312,10 @@ export namespace Prisma {
     regionId?: NullableStringFieldUpdateOperationsInput | string | null
     driverId?: NullableStringFieldUpdateOperationsInput | string | null
     car_id?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -24149,6 +24361,10 @@ export namespace Prisma {
     clientId?: string | null
     regionId?: string | null
     driverId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -24171,6 +24387,10 @@ export namespace Prisma {
 
   export type OrderUpdateWithoutCarInput = {
     id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -24193,6 +24413,10 @@ export namespace Prisma {
     clientId?: NullableStringFieldUpdateOperationsInput | string | null
     regionId?: NullableStringFieldUpdateOperationsInput | string | null
     driverId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -24212,6 +24436,10 @@ export namespace Prisma {
     clientId?: NullableStringFieldUpdateOperationsInput | string | null
     regionId?: NullableStringFieldUpdateOperationsInput | string | null
     driverId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -24273,6 +24501,10 @@ export namespace Prisma {
     clientId?: string | null
     driverId?: string | null
     car_id?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    luggage_standard?: number
+    luggage_small?: number
     name?: string | null
     from_address: string
     to_address: string
@@ -24370,6 +24602,10 @@ export namespace Prisma {
 
   export type OrderUpdateWithoutRegionInput = {
     id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -24392,6 +24628,10 @@ export namespace Prisma {
     clientId?: NullableStringFieldUpdateOperationsInput | string | null
     driverId?: NullableStringFieldUpdateOperationsInput | string | null
     car_id?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
@@ -24411,6 +24651,10 @@ export namespace Prisma {
     clientId?: NullableStringFieldUpdateOperationsInput | string | null
     driverId?: NullableStringFieldUpdateOperationsInput | string | null
     car_id?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    luggage_standard?: IntFieldUpdateOperationsInput | number
+    luggage_small?: IntFieldUpdateOperationsInput | number
     name?: NullableStringFieldUpdateOperationsInput | string | null
     from_address?: StringFieldUpdateOperationsInput | string
     to_address?: StringFieldUpdateOperationsInput | string
