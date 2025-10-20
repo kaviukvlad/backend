@@ -23,9 +23,7 @@ export class OrdersController {
 	constructor(private readonly ordersService: OrdersService) {}
 
 	@Post()
-	@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
-	@UseGuards(RolesGuard)
-	@Auth()
+	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
 	async create(
 		@Body(new ValidationPipe()) createOrderDto: CreateOrderDto,
 		@Request() req

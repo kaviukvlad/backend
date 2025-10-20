@@ -1,5 +1,6 @@
 import {
 	IsDateString,
+	IsEmail,
 	IsInt,
 	IsNotEmpty,
 	IsNumber,
@@ -11,6 +12,10 @@ import {
 } from 'class-validator'
 
 export class CreateOrderDto {
+	@IsEmail()
+	@IsNotEmpty()
+	customerEmail: string
+
 	@IsString()
 	@IsNotEmpty()
 	from_address: string

@@ -73,15 +73,7 @@ export class AdminService {
 		status: VehicleVerificationStatus,
 		adminUserId: string
 	) {
-		const adminProfile = await this.prisma.adminProfile.findUnique({
-			where: { userId: adminUserId }
-		})
-
-		if (!adminProfile) {
-			throw new NotFoundException(
-				`Admin profile for user ID ${adminUserId} not found.`
-			)
-		}
+		const adminProfile = await this.findAdminProfile(adminUserId)
 
 		const updatedCar = await this.prisma.car.update({
 			where: { id: carId },
@@ -104,15 +96,7 @@ export class AdminService {
 		status: DocumentStatus,
 		adminUserId: string
 	) {
-		const adminProfile = await this.prisma.adminProfile.findUnique({
-			where: { userId: adminUserId }
-		})
-
-		if (!adminProfile) {
-			throw new NotFoundException(
-				`Admin profile for user ID ${adminUserId} not found.`
-			)
-		}
+		const adminProfile = await this.findAdminProfile(adminUserId)
 
 		const updatedDocument = await this.prisma.document.update({
 			where: { id: documentId },
@@ -128,6 +112,18 @@ export class AdminService {
 			}
 		})
 		return updatedDocument
+	}
+
+	private async findAdminProfile(userId: string) {
+		const adminProfile = await this.prisma.adminProfile.findUnique({
+			where: { userId }
+		})
+		if (!adminProfile) {
+			throw new NotFoundException(
+				`Admin profile for user ID ${userId} not found.`
+			)
+		}
+		return adminProfile
 	}
 
 	async getPendingCars() {

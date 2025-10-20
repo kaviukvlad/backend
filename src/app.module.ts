@@ -9,6 +9,9 @@ import { OrdersModule } from './orders/orders.module'
 import { RegionModule } from './region/region.module'
 import { UserModule } from './user/user.module'
 import { VehicleTypeModule } from './vehicle-type/vehicle-type.module'
+import { PartnerModule } from './partner/partner.module';
+import { PdfModule } from './pdf/pdf.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
 	imports: [
@@ -23,7 +26,10 @@ import { VehicleTypeModule } from './vehicle-type/vehicle-type.module'
 		CarModule,
 		VehicleTypeModule,
 		OrdersModule,
-		ClientModule
+		ClientModule,
+		PartnerModule,
+		PdfModule,
+		EmailModule
 	]
 })
 export class AppModule {}
