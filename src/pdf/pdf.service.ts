@@ -34,6 +34,18 @@ export class PdfService {
 			minute: '2-digit'
 		})
 
+		let from_address = 'Not specified'
+		let to_address = 'Not specified'
+
+		if (
+			Array.isArray(order.routeWaypoints) &&
+			order.routeWaypoints.length > 0
+		) {
+			const waypoints = order.routeWaypoints as any[]
+			from_address = waypoints[0]?.address || from_address
+			to_address = waypoints[waypoints.length - 1]?.address || to_address
+		}
+
 		return `
       <!DOCTYPE html>
       <html lang="uk">
@@ -55,8 +67,8 @@ export class PdfService {
           <hr>
           <div class="details-grid">
             <strong>Дата та час:</strong>      <span>${tripDate}</span>
-            <strong>Звідки:</strong>          <span>${order.from_address}</span>
-            <strong>Куди:</strong>            <span>${order.to_address}</span>
+            <strong>Звідки:</strong>          <span>${from_address}</span>
+            <strong>Куди:</strong>            <span>${to_address}</span>
             <strong>Кількість пасажирів:</strong> <span>${order.passenger_count}</span>
             ${order.flight_number ? `<strong>Номер рейсу:</strong> <span>${order.flight_number}</span>` : ''}
             ${order.notes ? `<strong>Примітка:</strong> <span>${order.notes}</span>` : ''}

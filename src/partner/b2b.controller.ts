@@ -1,17 +1,16 @@
+import { Body, Controller, Post, Request, ValidationPipe } from '@nestjs/common'
 import {
-	Body,
-	Controller,
-	Post,
-	Request,
-	UseGuards,
-	ValidationPipe
-} from '@nestjs/common'
+	ApiOperation,
+	ApiResponse,
+	ApiSecurity,
+	ApiTags
+} from '@nestjs/swagger'
 import { EmailService } from 'src/email/email.service'
 import { CreateOrderDto } from 'src/orders/dto/create-order.dto'
 import { OrdersService } from 'src/orders/orders.service'
 import { PdfService } from 'src/pdf/pdf.service'
-import { ApiKeyGuard } from './guard/api-key.guard'
 
+@ApiTags('B2B')
 @Controller('b2b')
 export class B2bController {
 	constructor(
@@ -21,7 +20,10 @@ export class B2bController {
 	) {}
 
 	@Post('orders')
-	@UseGuards(ApiKeyGuard)
+	@ApiOperation({ summary: 'Create order from B2B partner' })
+	@ApiSecurity('ApiKeyAuth')
+	@ApiResponse({ status: 201, description: 'Order successfully created.' })
+	@ApiResponse({ status: 401, description: 'Invalid or inactive API key.' })
 	async createOrder(
 		@Body(new ValidationPipe()) createOrderDto: CreateOrderDto,
 		@Request() req

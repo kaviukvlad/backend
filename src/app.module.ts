@@ -12,6 +12,8 @@ import { VehicleTypeModule } from './vehicle-type/vehicle-type.module'
 import { PartnerModule } from './partner/partner.module';
 import { PdfModule } from './pdf/pdf.module';
 import { EmailModule } from './email/email.module';
+import { GeoModule } from './geo/geo.module';
+import { OrderOptionsModule } from './order-options/order-options.module';
 
 @Module({
 	imports: [
@@ -29,7 +31,9 @@ import { EmailModule } from './email/email.module';
 		ClientModule,
 		PartnerModule,
 		PdfModule,
-		EmailModule
+		EmailModule,
+		GeoModule,
+		OrderOptionsModule
 	]
 })
 export class AppModule {}

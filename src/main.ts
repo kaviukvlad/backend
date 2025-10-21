@@ -21,7 +21,7 @@ async function bootstrap() {
 
 	const config = new DocumentBuilder()
 		.setTitle('TakeTransfer API')
-		.setDescription('Документація для B2B платформи бронювання трансферів')
+		.setDescription('')
 		.setVersion('1.0')
 		.addBearerAuth()
 		.addApiKey(

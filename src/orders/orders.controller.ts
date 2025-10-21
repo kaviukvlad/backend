@@ -7,22 +7,31 @@ import {
 	Patch,
 	Post,
 	Request,
-	UseGuards,
 	ValidationPipe
 } from '@nestjs/common'
+import {
+	ApiBearerAuth,
+	ApiOperation,
+	ApiParam,
+	ApiResponse,
+	ApiTags
+} from '@nestjs/swagger'
 import { UserRole } from 'prisma/generated/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
-import { Roles } from 'src/auth/decorators/roles.decorator'
-import { RolesGuard } from 'src/auth/guard/roles.guard'
 import { CreateOrderDto } from './dto/create-order.dto'
 import { UpdateOrderDto } from './dto/update-order.dto'
 import { OrdersService } from './orders.service'
 
+@ApiTags('Orders')
+@ApiBearerAuth()
 @Controller('orders')
 export class OrdersController {
 	constructor(private readonly ordersService: OrdersService) {}
 
 	@Post()
+	@ApiOperation({ summary: 'Create new order' })
+	@ApiResponse({ status: 201, description: 'Order successfully created.' })
+	@ApiResponse({ status: 400, description: 'Invalid input.' })
 	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
 	async create(
 		@Body(new ValidationPipe()) createOrderDto: CreateOrderDto,
@@ -33,23 +42,29 @@ export class OrdersController {
 	}
 
 	@Get()
-	@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
-	@UseGuards(RolesGuard)
-	@Auth()
+	@ApiOperation({ summary: 'Get a list of all orders' })
+	@ApiResponse({ status: 200, description: 'Order list received.' })
+	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
 	async findAll() {
 		return this.ordersService.findAll()
 	}
 
 	@Get(':id')
-	@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
-	@UseGuards(RolesGuard)
-	@Auth()
+	@ApiOperation({ summary: 'Get single order details by ID' })
+	@ApiParam({ name: 'id', description: 'Order ID' })
+	@ApiResponse({ status: 200, description: 'Order data received.' })
+	@ApiResponse({ status: 404, description: 'Order not found.' })
+	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
 	async findOne(@Param('id') id: string) {
 		return this.ordersService.findOne(id)
 	}
 
 	@Patch(':id')
-	@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@ApiOperation({ summary: 'Update existing order' })
+	@ApiParam({ name: 'id', description: 'Order ID' })
+	@ApiResponse({ status: 200, description: 'Order successfully updated.' })
+	@ApiResponse({ status: 404, description: 'Order not found.' })
+	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
 	async update(
 		@Param('id') id: string,
 		@Body(new ValidationPipe()) dto: UpdateOrderDto
@@ -58,19 +73,31 @@ export class OrdersController {
 	}
 
 	@Delete(':id')
-	@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@ApiOperation({ summary: 'Cancel order (soft delete)' })
+	@ApiParam({ name: 'id', description: 'Order ID' })
+	@ApiResponse({ status: 200, description: 'Order successfully canceled.' })
+	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
 	async remove(@Param('id') id: string) {
 		return this.ordersService.remove(id)
 	}
 
 	@Patch(':id/restore')
-	@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@ApiOperation({ summary: 'Restore canceled order' })
+	@ApiParam({ name: 'id', description: 'Order ID' })
+	@ApiResponse({ status: 200, description: 'Order successfully restored.' })
+	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
 	async restore(@Param('id') id: string) {
 		return this.ordersService.restore(id)
 	}
 
 	@Post(':id/copy')
-	@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@ApiOperation({ summary: 'Create a copy of an existing order' })
+	@ApiParam({ name: 'id', description: 'Order ID to copy' })
+	@ApiResponse({
+		status: 201,
+		description: 'A copy of the order was successfully created.'
+	})
+	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
 	async copy(@Param('id') id: string) {
 		return this.ordersService.copy(id)
 	}

@@ -5,23 +5,37 @@ import {
 	Get,
 	HttpCode,
 	HttpStatus,
-	Patch,
-	UseGuards
+	Patch
 } from '@nestjs/common'
 import { UserRole } from 'prisma/generated/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 
+import {
+	ApiBearerAuth,
+	ApiOperation,
+	ApiResponse,
+	ApiTags
+} from '@nestjs/swagger'
 import { CurrentClient } from 'src/auth/decorators/client.decorators'
-import { Roles } from 'src/auth/decorators/roles.decorator'
-import { RolesGuard } from 'src/auth/guard/roles.guard'
 import { ClientService } from './client.service'
 import { UpdateClientDto } from './dto/update-client.dto'
 
+@ApiTags('Client Profile')
+@ApiBearerAuth()
 @Controller('client')
 export class ClientController {
 	constructor(private readonly clientService: ClientService) {}
 
 	@Get('profile')
+	@ApiOperation({ summary: 'Get current client profile' })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: 'Profile successfully retrieved.'
+	})
+	@ApiResponse({
+		status: HttpStatus.UNAUTHORIZED,
+		description: 'Unauthorized access.'
+	})
 	@Auth(UserRole.USER)
 	@HttpCode(HttpStatus.OK)
 	async getMyProfile(@CurrentClient('id') clientId: string) {
@@ -29,9 +43,16 @@ export class ClientController {
 	}
 
 	@Patch('profile')
-	@Roles(UserRole.USER)
-	@UseGuards(RolesGuard)
-	@Auth()
+	@ApiOperation({ summary: 'Update current client profile' })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: 'Profile successfully updated.'
+	})
+	@ApiResponse({
+		status: HttpStatus.BAD_REQUEST,
+		description: 'Invalid input.'
+	})
+	@Auth(UserRole.USER)
 	@HttpCode(HttpStatus.OK)
 	async updateMyProfile(
 		@CurrentClient('id') clientId: string,
@@ -41,9 +62,12 @@ export class ClientController {
 	}
 
 	@Delete('profile')
-	@Roles(UserRole.USER)
-	@UseGuards(RolesGuard)
-	@Auth()
+	@ApiOperation({ summary: 'Delete current client profile' })
+	@ApiResponse({
+		status: HttpStatus.NO_CONTENT,
+		description: 'Profile successfully deleted.'
+	})
+	@Auth(UserRole.USER)
 	@HttpCode(HttpStatus.NO_CONTENT)
 	async deleteMyProfile(@CurrentClient('id') clientId: string) {
 		return this.clientService.deleteProfile(clientId)
