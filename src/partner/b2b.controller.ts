@@ -5,6 +5,7 @@ import {
 	ApiSecurity,
 	ApiTags
 } from '@nestjs/swagger'
+import { Locale } from 'src/auth/decorators/locale.decorator'
 import { EmailService } from 'src/email/email.service'
 import { CreateOrderDto } from 'src/orders/dto/create-order.dto'
 import { OrdersService } from 'src/orders/orders.service'
@@ -26,7 +27,8 @@ export class B2bController {
 	@ApiResponse({ status: 401, description: 'Invalid or inactive API key.' })
 	async createOrder(
 		@Body(new ValidationPipe()) createOrderDto: CreateOrderDto,
-		@Request() req
+		@Request() req,
+		@Locale() locale: string
 	) {
 		const partner = req.partner
 
@@ -36,7 +38,7 @@ export class B2bController {
 			partner
 		)
 
-		const pdfBuffer = await this.pdfService.generateVoucher(newOrder)
+		const pdfBuffer = await this.pdfService.generateVoucher(newOrder, locale)
 
 		await this.emailService.sendVoucher(
 			createOrderDto.customerEmail,

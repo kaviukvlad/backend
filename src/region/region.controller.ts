@@ -9,18 +9,22 @@ import {
 } from '@nestjs/common'
 import {
 	ApiBearerAuth,
+	ApiExtraModels,
 	ApiOperation,
 	ApiParam,
 	ApiResponse,
-	ApiTags
+	ApiTags,
+	getSchemaPath
 } from '@nestjs/swagger'
 import { UserRole } from 'prisma/generated/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { CreateRegionDto } from './dto/create-region.dto'
+import { RegionResponseDto } from './dto/region-response.dto'
 import { RegionService } from './region.service'
 
 @ApiTags('Regions')
 @Controller('regions')
+@ApiExtraModels(RegionResponseDto)
 export class RegionController {
 	constructor(private readonly regionService: RegionService) {}
 
@@ -28,7 +32,11 @@ export class RegionController {
 	@ApiOperation({ summary: 'Get all regions tree' })
 	@ApiResponse({
 		status: 200,
-		description: 'List of regions successfully retrieved.'
+		description: 'Region tree successfully retrieved.',
+		schema: {
+			type: 'array',
+			items: { $ref: getSchemaPath(RegionResponseDto) }
+		}
 	})
 	async findAll() {
 		return this.regionService.findAll()

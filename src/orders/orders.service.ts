@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common'
 import { OrderOption, Partner } from 'prisma/generated/client'
 import { GeoService } from 'src/geo/geo.service'
+import { PricingService } from 'src/pricing/pricing.service'
 import { PrismaService } from 'src/prisma.service'
 import { CreateOrderDto } from './dto/create-order.dto'
 import { UpdateOrderDto } from './dto/update-order.dto'
@@ -13,7 +14,8 @@ import { UpdateOrderDto } from './dto/update-order.dto'
 export class OrdersService {
 	constructor(
 		private prisma: PrismaService,
-		private geoService: GeoService
+		private geoService: GeoService,
+		private pricingService: PricingService
 	) {}
 
 	async create(dto: CreateOrderDto, createId?: string, partner?: Partner) {
@@ -27,36 +29,21 @@ export class OrdersService {
 		const { distanceInKm, durationInMinutes } =
 			await this.geoService.getDistanceAndDuration(dto.waypoints)
 
-		let totalOptionsPrice = 0
-		let optionsFromDb: OrderOption[] = []
+		const finalPrice = await this.pricingService.calculateFinalPrice(
+			dto,
+			partner
+		)
 
-		if (dto.selectedOptions?.length) {
-			const optionIds = dto.selectedOptions.map(opt => opt.optionId)
-			optionsFromDb = await this.prisma.orderOption.findMany({
-				where: { id: { in: optionIds }, isActive: true }
-			})
+		const optionsFromDb = dto.selectedOptions?.length
+			? await this.prisma.orderOption.findMany({
+					where: {
+						id: {
+							in: dto.selectedOptions.map(o => o.optionId)
+						}
+					}
+				})
+			: []
 
-			if (optionsFromDb.length !== optionIds.length) {
-				throw new BadRequestException(
-					'One or more of the selected options are invalid or inactive.'
-				)
-			}
-
-			totalOptionsPrice = dto.selectedOptions.reduce((sum, selectedOpt) => {
-				const dbOption = optionsFromDb.find(
-					opt => opt.id === selectedOpt.optionId
-				)!
-				const quantity = selectedOpt.quantity || 1
-				return sum + Number(dbOption.price) * quantity
-			}, 0)
-		}
-
-		let finalPrice = dto.price + totalOptionsPrice
-
-		if (partner && partner?.markupPercent?.toNumber() > 0) {
-			const markup = Number(partner.markupPercent)
-			finalPrice = finalPrice * (1 + markup / 100)
-		}
 		const newOrder = await this.prisma.order.create({
 			data: {
 				routeWaypoints: dto.waypoints as any,
@@ -70,6 +57,7 @@ export class OrdersService {
 				luggage_small: dto.luggage_small,
 				distanceInKm,
 				durationInMinutes,
+				vehicleTypeId: dto.vehicleTypeId,
 				price: finalPrice,
 				status: 'NEW',
 				partnerId: partner ? partner.id : null,
@@ -170,48 +158,61 @@ export class OrdersService {
 	async update(id: string, dto: UpdateOrderDto) {
 		const order = await this.findOne(id)
 
-		const { selectedOptions, waypoints, price, ...restDto } = dto
-
-		let totalOptionsPrice = 0
-		let optionsFromDb: OrderOption[] = []
-		let finalPrice = order.price.toNumber()
-
-		if (selectedOptions) {
-			if (selectedOptions.length > 0) {
-				const optionIds = selectedOptions.map(opt => opt.optionId)
-				optionsFromDb = await this.prisma.orderOption.findMany({
-					where: { id: { in: optionIds }, isActive: true }
+		const partner = order.partnerId
+			? await this.prisma.partner.findUnique({
+					where: { id: order.partnerId }
 				})
+			: undefined
 
-				if (optionsFromDb.length !== optionIds.length) {
-					throw new BadRequestException(
-						'One or more of the selected options are invalid or inactive.'
-					)
-				}
+		let finalPrice = order.price.toNumber()
+		let optionsFromDb: OrderOption[] = []
 
-				totalOptionsPrice = selectedOptions.reduce((sum, selectedOpt) => {
-					const dbOption = optionsFromDb.find(
-						opt => opt.id === selectedOpt.optionId
-					)!
-					const quantity = selectedOpt.quantity || 1
-					return sum + Number(dbOption.price) * quantity
-				}, 0)
+		if (dto.price !== undefined || dto.selectedOptions || dto.vehicleTypeId) {
+			const dataForPricing: CreateOrderDto = {
+				price:
+					dto.price ??
+					order.price.toNumber() -
+						order.selectedOptions.reduce(
+							(sum, opt) => sum + Number(opt.priceAtTimeOfOrder) * opt.quantity,
+							0
+						),
+				selectedOptions:
+					dto.selectedOptions ??
+					order.selectedOptions.map(o => ({
+						optionId: o.optionId,
+						quantity: o.quantity
+					})),
+				waypoints: (dto.waypoints || order.routeWaypoints) as any,
+				customerEmail: dto.customerEmail || order.customerEmail!,
+				trip_datetime: new Date(
+					dto.trip_datetime || order.trip_datetime
+				).toISOString(),
+				passenger_count: dto.passenger_count || order.passenger_count,
+				regionId: dto.regionId || order.regionId!,
+
+				vehicleTypeId: dto.vehicleTypeId || order.vehicleTypeId
 			}
 
-			const oldOptionsPrice = order.selectedOptions.reduce((sum, opt) => {
-				return sum + Number(opt.priceAtTimeOfOrder) * opt.quantity
-			}, 0)
+			finalPrice = await this.pricingService.calculateFinalPrice(
+				dataForPricing,
+				partner ?? undefined
+			)
 
-			const basePrice = order.price.toNumber() - oldOptionsPrice
-			finalPrice = basePrice + totalOptionsPrice
+			if (dto.selectedOptions) {
+				optionsFromDb = await this.prisma.orderOption.findMany({
+					where: { id: { in: dto.selectedOptions.map(o => o.optionId) } }
+				})
+			}
 		}
 
 		return this.prisma.$transaction(async tx => {
-			if (selectedOptions) {
+			if (dto.selectedOptions) {
 				await tx.orderToOption.deleteMany({
 					where: { orderId: id }
 				})
 			}
+
+			const { selectedOptions, waypoints, ...restDto } = dto
 
 			const updatedOrder = await tx.order.update({
 				where: { id },
@@ -222,9 +223,8 @@ export class OrdersService {
 					...(dto.trip_datetime && {
 						trip_datetime: new Date(dto.trip_datetime)
 					}),
-
 					selectedOptions: {
-						create: selectedOptions?.map(opt => {
+						create: dto.selectedOptions?.map(opt => {
 							const dbOption = optionsFromDb.find(o => o.id === opt.optionId)!
 							return {
 								optionId: opt.optionId,

@@ -1,0 +1,12 @@
+{
+	"title": "Transfer Voucher #{id}",
+	"heading": "Transfer Voucher",
+	"booking_number": "Booking number:",
+	"date_time": "Date & Time:",
+	"from": "From:",
+	"to": "To:",
+	"passengers": "Number of passengers:",
+	"flight_number": "Flight number:",
+	"notes": "Notes:",
+	"thank_you": "Thank you for choosing our service! Please have this voucher with you."
+}

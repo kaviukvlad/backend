@@ -14,7 +14,7 @@ import { GeoService } from './geo.service'
 @ApiTags('Geo')
 @ApiBearerAuth()
 @Controller('geo')
-@Auth(UserRole.ADMIN, UserRole.DRIVER, UserRole.USER)
+@Auth(UserRole.ADMIN, UserRole.DRIVER, UserRole.USER, UserRole.SUPERADMIN)
 export class GeoController {
 	constructor(private readonly geoService: GeoService) {}
 
@@ -25,9 +25,18 @@ export class GeoController {
 		description: 'Part of the address to search (min. 3 characters)',
 		example: 'Lviv, Step St.'
 	})
+	@ApiQuery({
+		name: 'language',
+		description: 'Language code (en)',
+		required: false,
+		example: 'en'
+	})
 	@ApiResponse({ status: 200, description: 'List of found addresses.' })
-	async autocomplete(@Query('query') query: string) {
-		return this.geoService.autocomplete(query)
+	async autocomplete(
+		@Query('query') query: string,
+		@Query('language') language: string
+	) {
+		return this.geoService.autocomplete(query, language)
 	}
 
 	@Get('place-details')

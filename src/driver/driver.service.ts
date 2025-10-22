@@ -151,34 +151,38 @@ export class DriverService {
 	}
 
 	async acceptOrder(driverId: string, orderId: string) {
-		const driverProfile = await this.prisma.driverProfile.findUnique({
-			where: { id: driverId },
-			include: { cars: true }
-		})
+		return this.prisma.$transaction(async tx => {
+			const driverProfile = await tx.driverProfile.findUnique({
+				where: { id: driverId },
+				include: { cars: true }
+			})
 
-		if (!driverProfile || driverProfile.status !== 1) {
-			throw new ForbiddenException('Your profile is not approved.')
-		}
-
-		const approvedCar = driverProfile.cars.find(
-			car => car.verification_status === 'APPROVED'
-		)
-		if (!approvedCar) {
-			throw new ForbiddenException('You have no approved cars.')
-		}
-
-		const order = await this.prisma.order.findUnique({ where: { id: orderId } })
-		if (!order || order.status !== 'NEW') {
-			throw new BadRequestException('Order is not available.')
-		}
-
-		return this.prisma.order.update({
-			where: { id: orderId },
-			data: {
-				status: 'ACCEPTED',
-				driver: { connect: { id: driverId } },
-				car: { connect: { id: approvedCar.id } }
+			if (!driverProfile || driverProfile.status !== 1) {
+				throw new ForbiddenException('Your profile is not approved.')
 			}
+
+			const approvedCar = driverProfile.cars.find(
+				car => car.verification_status === 'APPROVED'
+			)
+			if (!approvedCar) {
+				throw new ForbiddenException('You have no approved cars.')
+			}
+
+			const order = await tx.order.findUnique({
+				where: { id: orderId }
+			})
+			if (!order || order.status !== 'NEW') {
+				throw new BadRequestException('Order is not available.')
+			}
+
+			return tx.order.update({
+				where: { id: orderId },
+				data: {
+					status: 'ACCEPTED',
+					driver: { connect: { id: driverId } },
+					car: { connect: { id: approvedCar.id } }
+				}
+			})
 		})
 	}
 

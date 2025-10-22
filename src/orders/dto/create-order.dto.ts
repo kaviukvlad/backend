@@ -93,6 +93,11 @@ export class CreateOrderDto {
 	@IsNotEmpty()
 	regionId: string
 
+	@ApiProperty({ description: 'Vehicle type ID' })
+	@IsString()
+	@IsNotEmpty()
+	vehicleTypeId: string
+
 	@ApiProperty({
 		description: 'Base trip cost (excluding additional options)',
 		example: 350.5

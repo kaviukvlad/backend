@@ -1,17 +1,20 @@
 import { Injectable } from '@nestjs/common'
+import { I18nService } from 'nestjs-i18n'
 import { Order } from 'prisma/generated/client'
 import * as puppeteer from 'puppeteer'
 
 @Injectable()
 export class PdfService {
-	async generateVoucher(order: Order): Promise<Buffer> {
+	constructor(private readonly i18n: I18nService) {}
+
+	async generateVoucher(order: Order, locale: string): Promise<Buffer> {
 		const browser = await puppeteer.launch({
 			headless: true,
 			args: ['--no-sandbox', '--disable-setuid-sandbox']
 		})
 		const page = await browser.newPage()
 
-		const htmlContent = this.getVoucherHtml(order)
+		const htmlContent = await this.getVoucherHtml(order, locale)
 
 		await page.setContent(htmlContent, { waitUntil: 'networkidle0' })
 
@@ -25,8 +28,8 @@ export class PdfService {
 		return Buffer.from(pdfBuffer)
 	}
 
-	private getVoucherHtml(order: Order): string {
-		const tripDate = new Date(order.trip_datetime).toLocaleString('uk-UA', {
+	private async getVoucherHtml(order: Order, locale: string): Promise<string> {
+		const tripDate = new Date(order.trip_datetime).toLocaleString(locale, {
 			day: '2-digit',
 			month: 'long',
 			year: 'numeric',
@@ -46,12 +49,21 @@ export class PdfService {
 			to_address = waypoints[waypoints.length - 1]?.address || to_address
 		}
 
+		const title = await this.i18n.t('voucher.title', {
+			lang: locale,
+			args: {
+				id: order.id.substring(0, 8)
+			}
+		})
+
+		const langAttr = locale.split('-')[0]
+
 		return `
       <!DOCTYPE html>
-      <html lang="uk">
+      <html lang="${langAttr}">
       <head>
         <meta charset="UTF-8">
-        <title>Ваучер на трансфер №${order.id.substring(0, 8)}</title>
+        <title>${title}</title>
         <style>
           body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 40px; }
           .container { border: 1px solid #eee; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.05); }
@@ -62,19 +74,19 @@ export class PdfService {
       </head>
       <body>
         <div class="container">
-          <h1>Ваучер на трансфер</h1>
-          <p><strong>Номер бронювання:</strong> ${order.id.toUpperCase()}</p>
+          <h1>${await this.i18n.t('voucher.heading', { lang: locale })}</h1>
+          <p><strong>${await this.i18n.t('voucher.booking_number', { lang: locale })}</strong> ${order.id.toUpperCase()}</p>
           <hr>
           <div class="details-grid">
-            <strong>Дата та час:</strong>      <span>${tripDate}</span>
-            <strong>Звідки:</strong>          <span>${from_address}</span>
-            <strong>Куди:</strong>            <span>${to_address}</span>
-            <strong>Кількість пасажирів:</strong> <span>${order.passenger_count}</span>
-            ${order.flight_number ? `<strong>Номер рейсу:</strong> <span>${order.flight_number}</span>` : ''}
-            ${order.notes ? `<strong>Примітка:</strong> <span>${order.notes}</span>` : ''}
+           <strong>${await this.i18n.t('voucher.date_time', { lang: locale })}</strong>   <span>${tripDate}</span>
+            <strong>${await this.i18n.t('voucher.from', { lang: locale })}</strong>        <span>${from_address}</span>
+            <strong>${await this.i18n.t('voucher.to', { lang: locale })}</strong>          <span>${to_address}</span>
+            <strong>${await this.i18n.t('voucher.passengers', { lang: locale })}</strong> <span>${order.passenger_count}</span>
+            ${order.flight_number ? `<strong>${await this.i18n.t('voucher.flight_number', { lang: locale })}</strong> <span>${order.flight_number}</span>` : ''}
+            ${order.notes ? `<strong>${await this.i18n.t('voucher.notes', { lang: locale })}</strong> <span>${order.notes}</span>` : ''}
           </div>
           <hr>
-          <p style="font-size: 12px; color: #777;">Дякуємо, що обрали наш сервіс! Будь ласка, майте цей ваучер при собі.</p>
+         <p style="font-size: 12px; color: #777;">${await this.i18n.t('voucher.thank_you', { lang: locale })}</p>
         </div>
       </body>
       </html>
