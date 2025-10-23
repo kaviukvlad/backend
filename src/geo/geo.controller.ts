@@ -14,7 +14,7 @@ import { GeoService } from './geo.service'
 @ApiTags('Geo')
 @ApiBearerAuth()
 @Controller('geo')
-@Auth(UserRole.ADMIN, UserRole.DRIVER, UserRole.USER, UserRole.SUPERADMIN)
+@Auth(UserRole.ADMIN, UserRole.DRIVER, UserRole.USER)
 export class GeoController {
 	constructor(private readonly geoService: GeoService) {}
 

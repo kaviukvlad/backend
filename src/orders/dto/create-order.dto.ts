@@ -73,8 +73,8 @@ export class CreateOrderDto {
 
 	@ApiProperty({ description: 'Customer Email', example: 'client@example.com' })
 	@IsEmail()
-	@IsNotEmpty()
-	customerEmail: string
+	@IsOptional()
+	customerEmail?: string
 
 	@ApiProperty({
 		description: 'Date and time of the trip in ISO 8601 format',

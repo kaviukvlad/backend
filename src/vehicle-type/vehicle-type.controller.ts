@@ -37,7 +37,7 @@ export class VehicleTypeController {
 	@ApiBearerAuth()
 	@ApiResponse({ status: 201, description: 'Car type successfully created.' })
 	@ApiResponse({ status: 400, description: 'Invalid input.' })
-	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@Auth(UserRole.ADMIN)
 	async create(@Body() dto: CreateVehicleTypeDto) {
 		return this.vehicleTypeService.create(dto)
 	}

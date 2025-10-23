@@ -26,7 +26,7 @@ import { PartnerService } from './partner.service'
 @ApiTags('Admin Panel - Partners')
 @ApiBearerAuth()
 @Controller('admin/partners')
-@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
+@Auth(UserRole.ADMIN)
 export class PartnerController {
 	constructor(private readonly partnerService: PartnerService) {}
 

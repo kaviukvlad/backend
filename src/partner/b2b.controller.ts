@@ -1,4 +1,11 @@
-import { Body, Controller, Post, Request, ValidationPipe } from '@nestjs/common'
+import {
+	BadRequestException,
+	Body,
+	Controller,
+	Post,
+	Request,
+	ValidationPipe
+} from '@nestjs/common'
 import {
 	ApiOperation,
 	ApiResponse,
@@ -30,6 +37,10 @@ export class B2bController {
 		@Request() req,
 		@Locale() locale: string
 	) {
+		if (!createOrderDto.customerEmail) {
+			throw new BadRequestException('customerEmail is required for B2B orders.')
+		}
+
 		const partner = req.partner
 
 		const newOrder = await this.ordersService.create(

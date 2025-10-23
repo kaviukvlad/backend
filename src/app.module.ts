@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
+import { APP_GUARD } from '@nestjs/core'
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 import { AcceptLanguageResolver, I18nJsonLoader, I18nModule } from 'nestjs-i18n'
 import * as path from 'path'
 import { AdminModule } from './admin/admin.module'
@@ -13,13 +15,20 @@ import { OrderOptionsModule } from './order-options/order-options.module'
 import { OrdersModule } from './orders/orders.module'
 import { PartnerModule } from './partner/partner.module'
 import { PdfModule } from './pdf/pdf.module'
+import { PricingModule } from './pricing/pricing.module'
 import { RegionModule } from './region/region.module'
 import { UserModule } from './user/user.module'
 import { VehicleTypeModule } from './vehicle-type/vehicle-type.module'
-import { PricingModule } from './pricing/pricing.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
 	imports: [
+		ThrottlerModule.forRoot([
+			{
+				ttl: 60000,
+				limit: 10
+			}
+		]),
 		I18nModule.forRoot({
 			fallbackLanguage: 'en',
 			loader: I18nJsonLoader,
@@ -46,7 +55,14 @@ import { PricingModule } from './pricing/pricing.module';
 		EmailModule,
 		GeoModule,
 		OrderOptionsModule,
-		PricingModule
+		PricingModule,
+		PaymentModule
+	],
+	providers: [
+		{
+			provide: APP_GUARD,
+			useClass: ThrottlerGuard
+		}
 	]
 })
 export class AppModule {}

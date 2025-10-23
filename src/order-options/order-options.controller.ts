@@ -42,7 +42,7 @@ export class OrderOptionsController {
 	@ApiResponse({ status: 201, description: 'Option created successfully.' })
 	@ApiResponse({ status: 400, description: 'Invalid input.' })
 	@ApiResponse({ status: 403, description: 'Access denied (non-admin).' })
-	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@Auth(UserRole.ADMIN)
 	@UsePipes(new ValidationPipe())
 	create(@Body() dto: CreateOrderOptionDto) {
 		return this.orderOptionsService.create(dto)
@@ -53,7 +53,7 @@ export class OrderOptionsController {
 	@ApiParam({ name: 'id', description: 'ID of the option to be deactivated' })
 	@ApiResponse({ status: 200, description: 'Option successfully deactivated.' })
 	@ApiResponse({ status: 404, description: 'Option with such ID not found.' })
-	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@Auth(UserRole.ADMIN)
 	deactivate(@Param('id') id: string) {
 		return this.orderOptionsService.deactivate(id)
 	}

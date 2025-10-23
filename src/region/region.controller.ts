@@ -47,19 +47,19 @@ export class RegionController {
 	@ApiBearerAuth()
 	@ApiResponse({ status: 201, description: 'Region created successfully.' })
 	@ApiResponse({ status: 400, description: 'Invalid input.' })
-	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@Auth(UserRole.ADMIN)
 	async create(@Body() dto: CreateRegionDto) {
 		return this.regionService.create(dto)
 	}
 
 	@Delete(':id')
 	@HttpCode(204)
-	@ApiOperation({ summary: 'Delete region (for superadmin)' })
+	@ApiOperation({ summary: 'Delete region (for admin)' })
 	@ApiBearerAuth()
 	@ApiParam({ name: 'id', description: 'ID of the region to delete' })
 	@ApiResponse({ status: 204, description: 'Region successfully deleted.' })
 	@ApiResponse({ status: 404, description: 'Region not found.' })
-	@Auth(UserRole.SUPERADMIN)
+	@Auth(UserRole.ADMIN)
 	async remove(@Param('id') id: string) {
 		return this.regionService.remove(id)
 	}

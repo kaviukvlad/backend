@@ -29,6 +29,7 @@
 		"@nestjs/passport": "^11.0.5",
 		"@nestjs/platform-express": "^11.0.1",
 		"@nestjs/swagger": "^11.2.1",
+		"@nestjs/throttler": "^6.4.0",
 		"@prisma/client": "6.17.1",
 		"@types/cookie-parser": "^1.4.9",
 		"@types/nodemailer": "^7.0.2",
@@ -36,9 +37,11 @@
 		"axios": "^1.12.2",
 		"class-transformer": "^0.5.1",
 		"class-validator": "^0.14.2",
+		"compression": "^1.8.1",
 		"cookie-parser": "^1.4.7",
 		"date-fns": "^4.1.0",
 		"express": "^5.1.0",
+		"helmet": "^8.1.0",
 		"multer": "^2.0.2",
 		"nestjs-i18n": "^10.5.1",
 		"nodemailer": "^7.0.9",
@@ -48,6 +51,7 @@
 		"puppeteer": "^24.25.0",
 		"reflect-metadata": "^0.2.2",
 		"rxjs": "^7.8.1",
+		"stripe": "^19.1.0",
 		"swagger-ui-express": "^5.0.1"
 	},
 	"devDependencies": {

@@ -47,7 +47,7 @@ export class UserService {
 							}
 						: undefined,
 				adminProfile:
-					dto.role === UserRole.ADMIN || dto.role === UserRole.SUPERADMIN
+					dto.role === UserRole.ADMIN
 						? { create: { name: dto.name } }
 						: undefined,
 				clientProfile:

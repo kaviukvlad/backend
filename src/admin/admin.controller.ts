@@ -25,7 +25,7 @@ export class AdminController {
 		description: 'User list successfully retrieved.'
 	})
 	@ApiResponse({ status: 403, description: 'Access denied.' })
-	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@Auth(UserRole.ADMIN)
 	async getAllUser() {
 		return this.adminService.getAllUsers()
 	}
@@ -35,7 +35,7 @@ export class AdminController {
 	@ApiParam({ name: 'id', description: 'User ID' })
 	@ApiResponse({ status: 200, description: 'User details received.' })
 	@ApiResponse({ status: 404, description: 'User not found.' })
-	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@Auth(UserRole.ADMIN)
 	async getUserById(@Param('id') id: string) {
 		return this.adminService.getUserById(id)
 	}
@@ -46,7 +46,7 @@ export class AdminController {
 		status: 200,
 		description: 'List of drivers for verification.'
 	})
-	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@Auth(UserRole.ADMIN)
 	async getPendingDrivers() {
 		return this.adminService.getPendingDrivers()
 	}
@@ -59,7 +59,7 @@ export class AdminController {
 		description: 'Driver status successfully updated.'
 	})
 	@ApiResponse({ status: 404, description: 'Driver profile not found.' })
-	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@Auth(UserRole.ADMIN)
 	async approveDriver(@Param('id') driverId: string) {
 		return this.adminService.updateDriverStatus(driverId, 1)
 	}
@@ -67,7 +67,7 @@ export class AdminController {
 	@Get('cars/pending')
 	@ApiOperation({ summary: 'Get cars awaiting verification' })
 	@ApiResponse({ status: 200, description: 'List of cars for verification.' })
-	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@Auth(UserRole.ADMIN)
 	async getPendingCars() {
 		return this.adminService.getPendingCars()
 	}
@@ -80,7 +80,7 @@ export class AdminController {
 		description: 'Vehicle status successfully updated.'
 	})
 	@ApiResponse({ status: 404, description: 'Vehicle not found.' })
-	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@Auth(UserRole.ADMIN)
 	async verifyCar(
 		@Param('id') carId: string,
 		@Body() dto: UpdateCarStatusDto,
@@ -93,7 +93,7 @@ export class AdminController {
 	@Get('documents/pending')
 	@ApiOperation({ summary: 'Get documents pending review' })
 	@ApiResponse({ status: 200, description: 'List of documents for review.' })
-	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@Auth(UserRole.ADMIN)
 	async getPendingDocuments() {
 		return this.adminService.getPendingDocuments()
 	}
@@ -106,7 +106,7 @@ export class AdminController {
 		description: 'Document status updated successfully.'
 	})
 	@ApiResponse({ status: 404, description: 'Document not found.' })
-	@Auth(UserRole.ADMIN, UserRole.SUPERADMIN)
+	@Auth(UserRole.ADMIN)
 	async verifyDocument(
 		@Param('id') documentId: string,
 		@Body() dto: UpdateDocumentStatusDto,

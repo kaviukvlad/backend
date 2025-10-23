@@ -18,7 +18,12 @@ export class OrdersService {
 		private pricingService: PricingService
 	) {}
 
-	async create(dto: CreateOrderDto, createId?: string, partner?: Partner) {
+	async create(
+		dto: CreateOrderDto,
+		createId?: string,
+		clientId?: string,
+		partner?: Partner
+	) {
 		const regionExists = await this.prisma.region.findUnique({
 			where: { id: dto.regionId }
 		})
@@ -60,6 +65,7 @@ export class OrdersService {
 				vehicleTypeId: dto.vehicleTypeId,
 				price: finalPrice,
 				status: 'NEW',
+				clientId: clientId ? clientId : null,
 				partnerId: partner ? partner.id : null,
 				selectedOptions: {
 					create: dto.selectedOptions?.map(opt => {
@@ -237,6 +243,61 @@ export class OrdersService {
 			})
 
 			return updatedOrder
+		})
+	}
+
+	async findMyOrders(clientId: string) {
+		return this.prisma.order.findMany({
+			where: {
+				clientId: clientId
+			},
+			orderBy: {
+				trip_datetime: 'desc'
+			},
+			include: {
+				driver: {
+					select: {
+						name: true,
+						user: {
+							select: {
+								phone: true
+							}
+						}
+					}
+				},
+				car: {
+					select: {
+						brand: true,
+						model: true,
+						license_plate: true
+					}
+				}
+			}
+		})
+	}
+
+	async findForClient(clientId: string) {
+		return this.prisma.order.findMany({
+			where: {
+				clientId: clientId
+			},
+			orderBy: {
+				createdAt: 'desc'
+			},
+			include: {
+				driver: {
+					select: {
+						name: true
+					}
+				},
+				car: {
+					select: {
+						brand: true,
+						model: true,
+						license_plate: true
+					}
+				}
+			}
 		})
 	}
 }
