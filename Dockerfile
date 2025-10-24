@@ -13,30 +13,41 @@ COPY prisma ./prisma/
 
 RUN pnpm install
 
+
 COPY . .
 
+
 RUN pnpm prisma generate
+
 
 RUN pnpm run build
 
 
+RUN pnpm prune --prod
 
-FROM node:18-alpine AS final
+
+
+FROM node:18-alpine
+
 
 RUN npm install -g pnpm
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
+
+COPY package.json ./
 
 
-RUN pnpm install --prod
+COPY --from=builder /app/node_modules ./node_modules
+
 
 COPY --from=builder /app/dist ./dist
 
+
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.pnpm/@prisma* ./node_modules/.pnpm/
+
 
 EXPOSE 3000
+
 
 CMD ["sh", "-c", "pnpm prisma migrate deploy && node dist/main.js"]
