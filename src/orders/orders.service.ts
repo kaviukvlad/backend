@@ -1,10 +1,12 @@
 import {
 	BadRequestException,
+	ForbiddenException,
 	Injectable,
 	NotFoundException
 } from '@nestjs/common'
 import { OrderOption, Partner } from 'prisma/generated/client'
 import { GeoService } from 'src/geo/geo.service'
+import { PaymentService } from 'src/payment/payment.service'
 import { PricingService } from 'src/pricing/pricing.service'
 import { PrismaService } from 'src/prisma.service'
 import { CreateOrderDto } from './dto/create-order.dto'
@@ -15,15 +17,20 @@ export class OrdersService {
 	constructor(
 		private prisma: PrismaService,
 		private geoService: GeoService,
-		private pricingService: PricingService
+		private pricingService: PricingService,
+		private paymentService: PaymentService
 	) {}
 
 	async create(
 		dto: CreateOrderDto,
-		createId?: string,
-		clientId?: string,
-		partner?: Partner
+		options: {
+			createId?: string
+			clientId?: string
+			partner?: Partner
+			paymentIntentId?: string
+		} = {}
 	) {
+		const { clientId, paymentIntentId, partner } = options
 		const regionExists = await this.prisma.region.findUnique({
 			where: { id: dto.regionId }
 		})
@@ -66,6 +73,7 @@ export class OrdersService {
 				price: finalPrice,
 				status: 'NEW',
 				clientId: clientId ? clientId : null,
+				paymentIntentId: paymentIntentId ? paymentIntentId : null,
 				partnerId: partner ? partner.id : null,
 				selectedOptions: {
 					create: dto.selectedOptions?.map(opt => {
@@ -299,5 +307,63 @@ export class OrdersService {
 				}
 			}
 		})
+	}
+
+	async cancelMyOrder(orderId: string, clientId: string) {
+		const order = await this.prisma.order.findUnique({
+			where: { id: orderId }
+		})
+
+		if (!order) {
+			throw new NotFoundException(`Замовлення з ID ${orderId} не знайдено.`)
+		}
+
+		if (order.clientId !== clientId) {
+			throw new ForbiddenException('Ви не можете скасувати це замовлення.')
+		}
+
+		if (['IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(order.status)) {
+			throw new BadRequestException('Це замовлення вже неможливо скасувати.')
+		}
+
+		// 1. Спочатку робимо повернення коштів, якщо є платіж
+		if (order.paymentIntentId) {
+			await this.paymentService.createRefund(order.paymentIntentId)
+		}
+
+		// 2. Тільки після успішного повернення оновлюємо статус в нашій БД
+		return this.prisma.order.update({
+			where: { id: orderId },
+			data: { status: 'CANCELLED' }
+		})
+	}
+
+	async findMyOrderById(orderId: string, clientId: string) {
+		const order = await this.prisma.order.findUnique({
+			where: { id: orderId },
+			include: {
+				selectedOptions: {
+					include: {
+						option: true
+					}
+				},
+				driver: {
+					select: { name: true, user: { select: { phone: true } } }
+				},
+				car: {
+					select: { brand: true, model: true, color: true, license_plate: true }
+				}
+			}
+		})
+
+		if (!order) {
+			throw new NotFoundException(`Order with ID ${orderId} not found.`)
+		}
+
+		if (order.clientId !== clientId) {
+			throw new ForbiddenException('You do not have access to this order.')
+		}
+
+		return order
 	}
 }

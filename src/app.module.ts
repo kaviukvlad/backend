@@ -1,7 +1,9 @@
+import { CacheModule } from '@nestjs/cache-manager'
 import { Module } from '@nestjs/common'
-import { ConfigModule } from '@nestjs/config'
+import { ConfigModule, ConfigService } from '@nestjs/config'
 import { APP_GUARD } from '@nestjs/core'
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
+import * as redisStore from 'cache-manager-redis-store'
 import { AcceptLanguageResolver, I18nJsonLoader, I18nModule } from 'nestjs-i18n'
 import * as path from 'path'
 import { AdminModule } from './admin/admin.module'
@@ -14,15 +16,25 @@ import { GeoModule } from './geo/geo.module'
 import { OrderOptionsModule } from './order-options/order-options.module'
 import { OrdersModule } from './orders/orders.module'
 import { PartnerModule } from './partner/partner.module'
+import { PaymentModule } from './payment/payment.module'
 import { PdfModule } from './pdf/pdf.module'
 import { PricingModule } from './pricing/pricing.module'
 import { RegionModule } from './region/region.module'
 import { UserModule } from './user/user.module'
 import { VehicleTypeModule } from './vehicle-type/vehicle-type.module'
-import { PaymentModule } from './payment/payment.module';
 
 @Module({
 	imports: [
+		CacheModule.registerAsync({
+			isGlobal: true,
+			imports: [ConfigModule],
+			inject: [ConfigService],
+			useFactory: async (configService: ConfigService) => ({
+				store: redisStore,
+				url: configService.get('REDIS_URL'),
+				ttl: 600
+			})
+		}),
 		ThrottlerModule.forRoot([
 			{
 				ttl: 60000,

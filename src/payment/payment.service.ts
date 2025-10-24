@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common'
+import {
+	BadRequestException,
+	Injectable,
+	InternalServerErrorException
+} from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import Stripe from 'stripe'
 
@@ -35,7 +39,8 @@ export class PaymentService {
 	async createPaymentIntent(
 		amount: number,
 		currency: string,
-		metadata: Stripe.MetadataParam
+		orderDetails: any,
+		clientId: string
 	) {
 		const amountInCents = Math.round(amount * 100)
 
@@ -43,13 +48,41 @@ export class PaymentService {
 			amount: amountInCents,
 			currency: currency.toLowerCase(),
 			automatic_payment_methods: {
-				enabled: true
+				enabled: true,
+				allow_redirects: 'never'
 			},
-			metadata: metadata
+			metadata: {
+				order_details: JSON.stringify(orderDetails),
+				client_id: clientId
+			}
 		})
 
 		return {
 			clientSecret: paymentIntent.client_secret
+		}
+	}
+
+	async createRefund(paymentIntentId: string) {
+		try {
+			const paymentIntent =
+				await this.stripe.paymentIntents.retrieve(paymentIntentId)
+
+			if (!paymentIntent.latest_charge) {
+				throw new Error('No chargeback found for this payment.')
+			}
+
+			const refund = await this.stripe.refunds.create({
+				charge: paymentIntent.latest_charge as string
+			})
+
+			console.log(`Successfully created refund: ${refund.id}`)
+			return refund
+		} catch (error) {
+			console.error(
+				`Failed to create refund for PaymentIntent ${paymentIntentId}`,
+				error
+			)
+			throw new BadRequestException(`Unable to refund: ${error.message}`)
 		}
 	}
 }

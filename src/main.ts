@@ -29,6 +29,7 @@ async function bootstrap() {
 		credentials: true,
 		exposedHeaders: 'set-cookie'
 	})
+
 	app.useStaticAssets(join(__dirname, '..', 'uploads'), {
 		prefix: '/uploads/'
 	})

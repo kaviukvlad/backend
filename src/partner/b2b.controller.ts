@@ -43,11 +43,9 @@ export class B2bController {
 
 		const partner = req.partner
 
-		const newOrder = await this.ordersService.create(
-			createOrderDto,
-			undefined,
-			partner
-		)
+		const newOrder = await this.ordersService.create(createOrderDto, {
+			partner: partner
+		})
 
 		const pdfBuffer = await this.pdfService.generateVoucher(newOrder, locale)
 

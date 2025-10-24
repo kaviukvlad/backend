@@ -19,6 +19,10 @@ import { UserRole } from 'prisma/generated/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { CurrentClient } from 'src/auth/decorators/client.decorators'
 
+import { InjectQueue } from '@nestjs/bull'
+import type { Queue } from 'bull'
+import { randomUUID } from 'crypto'
+import { CREATE_PAYMENT_JOB, PAYMENT_QUEUE } from 'src/payment/constants'
 import { PaymentService } from 'src/payment/payment.service'
 import { PricingService } from 'src/pricing/pricing.service'
 import { CreateOrderDto } from './dto/create-order.dto'
@@ -32,7 +36,8 @@ export class OrdersController {
 	constructor(
 		private readonly ordersService: OrdersService,
 		private readonly paymentService: PaymentService,
-		private readonly pricingService: PricingService
+		private readonly pricingService: PricingService,
+		@InjectQueue(PAYMENT_QUEUE) private paymentQueue: Queue
 	) {}
 
 	@Post()
@@ -52,21 +57,6 @@ export class OrdersController {
 		return this.ordersService.findAll()
 	}
 
-	/*@Post('my')
-	@ApiOperation({ summary: 'Create a new order for the current client' })
-	@Auth(UserRole.USER)
-	async createMyOrder(
-		@Body(new ValidationPipe()) createOrderDto: CreateOrderDto,
-		@CurrentClient('id') clientId: string
-	) {
-		const order = await this.ordersService.create(createOrderDto, clientId)
-
-		return {
-			message: 'Order created successfully. We are searching for a driver.',
-			orderId: order.id
-		}
-	}*/
-
 	@Get('my')
 	@ApiOperation({ summary: 'Get my order history' })
 	@Auth(UserRole.USER)
@@ -74,8 +64,37 @@ export class OrdersController {
 		return this.ordersService.findForClient(clientId)
 	}
 
+	@Get('my/:id')
+	@ApiOperation({ summary: 'Get details of a specific one of my orders' })
+	@Auth(UserRole.USER)
+	async getMyOrderById(
+		@Param('id') orderId: string,
+		@CurrentClient('id') clientId: string
+	) {
+		return this.ordersService.findMyOrderById(orderId, clientId)
+	}
+
+	@Patch('my/:id/cancel')
+	@ApiOperation({ summary: 'Cancel my order' })
+	@ApiParam({ name: 'id', description: 'Order ID to cancel' })
+	@Auth(UserRole.USER)
+	async cancelMyOrder(
+		@Param('id') orderId: string,
+		@CurrentClient('id') clientId: string
+	) {
+		const updatedOrder = await this.ordersService.cancelMyOrder(
+			orderId,
+			clientId
+		)
+		return {
+			message: 'Order successfully cancelled.',
+			order: updatedOrder
+		}
+	}
+
 	@Post('my/create-payment-intent')
-	@ApiOperation({ summary: 'Create a payment intent for a new order' })
+	@ApiOperation({ summary: 'Create a job to prepare a payment intent' })
+	@ApiResponse({ status: 202, description: 'Job accepted for processing.' })
 	@Auth(UserRole.USER)
 	async createPaymentIntent(
 		@Body(new ValidationPipe()) createOrderDto: CreateOrderDto,
@@ -84,18 +103,24 @@ export class OrdersController {
 		const finalPrice =
 			await this.pricingService.calculateFinalPrice(createOrderDto)
 
-		const paymentIntent = await this.paymentService.createPaymentIntent(
-			finalPrice,
-			'EUR',
+		const clientJobId = randomUUID()
+
+		await this.paymentQueue.add(
+			CREATE_PAYMENT_JOB,
 			{
-				order_details: JSON.stringify(createOrderDto),
-				client_id: clientId
+				amount: finalPrice,
+				currency: 'EUR',
+				orderDetails: createOrderDto,
+				clientId: clientId
+			},
+			{
+				jobId: clientJobId
 			}
 		)
 
 		return {
-			...paymentIntent,
-			amount: finalPrice
+			jobId: clientJobId,
+			message: 'Payment creation has been queued.'
 		}
 	}
 

@@ -8,41 +8,35 @@ WORKDIR /app
 
 
 COPY package.json pnpm-lock.yaml ./
-
-
 COPY prisma ./prisma/
 
 
 RUN pnpm install
 
-
 COPY . .
 
-
 RUN pnpm prisma generate
-
 
 RUN pnpm run build
 
 
-FROM node:18-alpine AS final
 
+FROM node:18-alpine AS final
 
 RUN npm install -g pnpm
 
 WORKDIR /app
-
 
 COPY package.json pnpm-lock.yaml ./
 
 
 RUN pnpm install --prod
 
-
 COPY --from=builder /app/dist ./dist
 
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.pnpm/@prisma* ./node_modules/.pnpm/
 
-COPY --from=builder /app/prisma ./prisma/
-
+EXPOSE 3000
 
 CMD ["sh", "-c", "pnpm prisma migrate deploy && node dist/main.js"]
