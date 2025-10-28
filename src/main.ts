@@ -3,10 +3,16 @@ import { NestExpressApplication } from '@nestjs/platform-express'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import compression from 'compression'
 import cookieParser from 'cookie-parser'
+import { randomUUID } from 'crypto'
 import { json } from 'express'
 import helmet from 'helmet'
 import { join } from 'path'
 import { AppModule } from './app.module'
+if (!(globalThis as any).crypto) {
+	;(globalThis as any).crypto = { randomUUID }
+} else if (!(globalThis as any).crypto.randomUUID) {
+	;(globalThis as any).crypto.randomUUID = randomUUID
+}
 
 async function bootstrap() {
 	const app = await NestFactory.create<NestExpressApplication>(AppModule)
