@@ -1,9 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import {
+	ConflictException,
+	Injectable,
+	NotFoundException
+} from '@nestjs/common'
+import { hash } from 'argon2'
 import {
 	DocumentStatus,
 	VehicleVerificationStatus
 } from 'prisma/generated/client'
 import { PrismaService } from 'src/prisma.service'
+import { CreateOperatorDto } from './dto/create-operator.dto'
+import { CreateTariffDto } from './dto/create-tariff.dto'
+import { UpdateDriverCommissionDto } from './dto/update-driver-commission.dto'
+import { UpdateDriverVehicleTypesDto } from './dto/update-driver-vehicle-types.dto'
 
 @Injectable()
 export class AdminService {
@@ -166,6 +175,105 @@ export class AdminService {
 					}
 				}
 			}
+		})
+	}
+
+	async updateDriverCommission(
+		driverId: string,
+		dto: UpdateDriverCommissionDto
+	) {
+		return this.prisma.driverProfile.update({
+			where: { id: driverId },
+			data: {
+				commissionPercent: dto.commissionPercent
+			},
+			select: { id: true, name: true, commissionPercent: true }
+		})
+	}
+
+	async updateDriverAllowedVehicleTypes(
+		driverId: string,
+		dto: UpdateDriverVehicleTypesDto
+	) {
+		return this.prisma.driverProfile.update({
+			where: { id: driverId },
+			data: {
+				allowedVehicleTypes: {
+					set: dto.vehicleTypeIds.map(id => ({ id }))
+				}
+			},
+			include: {
+				allowedVehicleTypes: true
+			}
+		})
+	}
+
+	async createTariff(dto: CreateTariffDto) {
+		const existingTariff = await this.prisma.tariff.findUnique({
+			where: {
+				regionId_vehicleTypeId: {
+					regionId: dto.regionId,
+					vehicleTypeId: dto.vehicleTypeId
+				}
+			}
+		})
+
+		if (existingTariff) {
+			throw new ConflictException(
+				'Tariff for this region and vehicle type already exists.'
+			)
+		}
+
+		return this.prisma.tariff.create({
+			data: {
+				regionId: dto.regionId,
+				vehicleTypeId: dto.vehicleTypeId,
+				baseFare: dto.baseFare,
+				pricePerKm: dto.pricePerKm,
+				pricePerMinute: dto.pricePerMinute,
+				minimumFare: dto.minimumFare,
+				isActive: dto.isActive
+			}
+		})
+	}
+
+	async createOperator(dto: CreateOperatorDto) {
+		const existingUser = await this.prisma.user.findUnique({
+			where: { email: dto.email }
+		})
+		if (existingUser) {
+			throw new ConflictException('User with this email already exists.')
+		}
+
+		const hashedPassword = await hash(dto.password)
+
+		return this.prisma.$transaction(async tx => {
+			const newUser = await tx.user.create({
+				data: {
+					email: dto.email,
+					password: hashedPassword,
+					role: 'OPERATOR'
+				}
+			})
+
+			await tx.operatorProfile.create({
+				data: {
+					userId: newUser.id,
+					name: dto.name
+				}
+			})
+
+			const driverProfile = await tx.driverProfile.create({
+				data: {
+					userId: newUser.id,
+					name: dto.name,
+					status: 1
+				}
+			})
+
+			const { password, ...userResult } = newUser
+
+			return { user: userResult, driverProfileId: driverProfile.id }
 		})
 	}
 }

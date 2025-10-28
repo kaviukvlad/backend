@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from 'src/prisma.service'
 import { CreateRegionDto } from './dto/create-region.dto'
+import { UpdateRegionDto } from './dto/update-region.dto'
 
 @Injectable()
 export class RegionService {
@@ -42,5 +43,13 @@ export class RegionService {
 		await this.prisma.region.findUniqueOrThrow({ where: { id } })
 
 		return this.prisma.region.delete({ where: { id } })
+	}
+
+	async updata(id: string, dto: UpdateRegionDto) {
+		await this.prisma.region.findUniqueOrThrow({ where: { id } })
+		return this.prisma.region.update({
+			where: { id },
+			data: dto
+		})
 	}
 }

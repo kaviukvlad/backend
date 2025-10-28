@@ -2,7 +2,8 @@ import {
 	CanActivate,
 	ExecutionContext,
 	ForbiddenException,
-	Injectable
+	Injectable,
+	UnauthorizedException
 } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 
@@ -19,11 +20,18 @@ export class RolesGuard implements CanActivate {
 			[context.getHandler(), context.getClass()]
 		)
 
-		if (!requiredRoles || requiredRoles.length == 0) {
-			return false
+		// Якщо ролі не вказані — не обмежуємо доступ цим гардом
+		if (!requiredRoles || requiredRoles.length === 0) {
+			return true
 		}
 
 		const { user } = context.switchToHttp().getRequest<{ user: User }>()
+
+		if (!user) {
+			// Аутентифікація повинна бути оброблена JwtAuthGuard; тут можемо кидати 401 або 403.
+			// Краще кинути Unauthorized, але залишу Forbidden, якщо хочеш суворішу поведінку:
+			throw new UnauthorizedException('User is not authenticated')
+		}
 
 		const hasRole = requiredRoles.some(role => user.role === role)
 

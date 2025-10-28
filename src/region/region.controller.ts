@@ -5,6 +5,7 @@ import {
 	Get,
 	HttpCode,
 	Param,
+	Patch,
 	Post
 } from '@nestjs/common'
 import {
@@ -20,6 +21,7 @@ import { UserRole } from 'prisma/generated/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { CreateRegionDto } from './dto/create-region.dto'
 import { RegionResponseDto } from './dto/region-response.dto'
+import { UpdateRegionDto } from './dto/update-region.dto'
 import { RegionService } from './region.service'
 
 @ApiTags('Regions')
@@ -62,5 +64,11 @@ export class RegionController {
 	@Auth(UserRole.ADMIN)
 	async remove(@Param('id') id: string) {
 		return this.regionService.remove(id)
+	}
+
+	@Patch(':id')
+	update(@Param('id') id: string, @Body() updateRegionDto: UpdateRegionDto) {
+		console.log(`Trying to update region with ID: ${id}`)
+		return this.regionService.updata(id, updateRegionDto)
 	}
 }

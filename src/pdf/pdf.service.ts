@@ -49,6 +49,24 @@ export class PdfService {
 			to_address = waypoints[waypoints.length - 1]?.address || to_address
 		}
 
+		let airportInfoHtml = ''
+		const airportKeywords = /аеропорт|airport/i
+		if (from_address && airportKeywords.test(from_address)) {
+			const airportPickupInfo = await this.i18n.t(
+				'voucher.airport_pickup_info',
+				{ lang: locale }
+			)
+
+			airportInfoHtml = `
+        <div class="airport-info" style="margin-top: 20px; padding: 15px; border: 1px dashed #ccc; background-color: #f9f9f9;">
+          <h3 style="margin-top: 0; color: #0056b3;">${await this.i18n.t('voucher.important_airport_info', { lang: locale })}</h3>
+          <p style="font-size: 12px; line-height: 1.5;">
+            ${airportPickupInfo}
+          </p>
+        </div>
+      `
+		}
+
 		const title = await this.i18n.t('voucher.title', {
 			lang: locale,
 			args: {
@@ -66,7 +84,7 @@ export class PdfService {
         <title>${title}</title>
         <style>
           body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 40px; }
-          .container { border: 1px solid #eee; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.05); }
+          .container { border: 1px solid #eee; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.05); max-width: 800px; margin: auto; }
           h1 { color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 10px; }
           .details-grid { display: grid; grid-template-columns: 150px 1fr; gap: 10px 20px; margin-top: 20px; }
           .details-grid strong { color: #555; }
@@ -78,15 +96,18 @@ export class PdfService {
           <p><strong>${await this.i18n.t('voucher.booking_number', { lang: locale })}</strong> ${order.id.toUpperCase()}</p>
           <hr>
           <div class="details-grid">
-           <strong>${await this.i18n.t('voucher.date_time', { lang: locale })}</strong>   <span>${tripDate}</span>
-            <strong>${await this.i18n.t('voucher.from', { lang: locale })}</strong>        <span>${from_address}</span>
-            <strong>${await this.i18n.t('voucher.to', { lang: locale })}</strong>          <span>${to_address}</span>
+            <strong>${await this.i18n.t('voucher.date_time', { lang: locale })}</strong> <span>${tripDate}</span>
+            <strong>${await this.i18n.t('voucher.from', { lang: locale })}</strong> <span>${from_address}</span>
+            <strong>${await this.i18n.t('voucher.to', { lang: locale })}</strong> <span>${to_address}</span>
             <strong>${await this.i18n.t('voucher.passengers', { lang: locale })}</strong> <span>${order.passenger_count}</span>
             ${order.flight_number ? `<strong>${await this.i18n.t('voucher.flight_number', { lang: locale })}</strong> <span>${order.flight_number}</span>` : ''}
             ${order.notes ? `<strong>${await this.i18n.t('voucher.notes', { lang: locale })}</strong> <span>${order.notes}</span>` : ''}
           </div>
           <hr>
-         <p style="font-size: 12px; color: #777;">${await this.i18n.t('voucher.thank_you', { lang: locale })}</p>
+          
+          ${airportInfoHtml}
+
+          <p style="font-size: 12px; color: #777;">${await this.i18n.t('voucher.thank_you', { lang: locale })}</p>
         </div>
       </body>
       </html>

@@ -2,6 +2,7 @@ import {
 	BadRequestException,
 	Body,
 	Controller,
+	InternalServerErrorException,
 	Post,
 	Request,
 	ValidationPipe
@@ -47,14 +48,18 @@ export class B2bController {
 			partner: partner
 		})
 
-		const pdfBuffer = await this.pdfService.generateVoucher(newOrder, locale)
+		if ('id' in newOrder) {
+			const pdfBuffer = await this.pdfService.generateVoucher(newOrder, locale)
+			await this.emailService.sendVoucher(
+				createOrderDto.customerEmail,
+				newOrder,
+				pdfBuffer
+			)
+			return newOrder
+		}
 
-		await this.emailService.sendVoucher(
-			createOrderDto.customerEmail,
-			newOrder,
-			pdfBuffer
+		throw new InternalServerErrorException(
+			'B2B order creation resulted in a payment queue job, which is not supported.'
 		)
-
-		return newOrder
 	}
 }

@@ -20,22 +20,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		})
 	}
 
-	/*async validate({ id }: { id: string }) {
-		return this.userSerrvice.getById(id)
-	}*/
-
 	async validate({ id }: { id: string }) {
+		console.log('JwtStrategy.validate id =', id)
 		const cacheKey = `user_${id}`
 
 		const cachedUser = await this.cacheManager.get(cacheKey)
 		if (cachedUser) {
-			console.log('--- Fetching user from CACHE ---')
 			return cachedUser
 		}
+		console.log('cachedUser =', cachedUser)
 
-		console.log('--- Fetching user from DB ---')
 		const user = await this.userSerrvice.getById(id)
-
+		console.log('user from db =', user)
 		await this.cacheManager.set(cacheKey, user, 900)
 
 		return user

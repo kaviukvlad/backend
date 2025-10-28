@@ -8,5 +8,8 @@
 	"passengers": "Number of passengers:",
 	"flight_number": "Flight number:",
 	"notes": "Notes:",
-	"thank_you": "Thank you for choosing our service! Please have this voucher with you."
+	"thank_you": "Thank you for choosing our service! Please have this voucher with you.",
+
+	"important_airport_info": "Important Airport Pickup Information",
+	"airport_pickup_info": "If you are arriving at Boryspil Airport (KBP), our driver will be waiting for you in the arrivals hall with a sign. If at Zhuliany Airport (IEV) - near the exit of Terminal A. Please turn on your phone after landing."
 }

@@ -9,10 +9,14 @@ import {
 	Param,
 	Patch,
 	Post,
+	UploadedFile,
 	UploadedFiles,
 	UseInterceptors
 } from '@nestjs/common'
-import { FileFieldsInterceptor } from '@nestjs/platform-express'
+import {
+	FileFieldsInterceptor,
+	FileInterceptor
+} from '@nestjs/platform-express'
 import {
 	ApiBearerAuth,
 	ApiBody,
@@ -22,6 +26,7 @@ import {
 	ApiTags
 } from '@nestjs/swagger'
 import { diskStorage } from 'multer'
+import { extname } from 'path'
 import { UserRole, type DriverProfile } from 'prisma/generated/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { CurrentDriver } from 'src/auth/decorators/driver.decorators'
@@ -29,6 +34,39 @@ import { CreateCarDto } from 'src/car/dto/create-car.dto'
 import { UpdateCarDto } from 'src/car/dto/update-car.dto'
 import { DriverService } from './driver.service'
 import { UpdateDriverDto } from './dto/update-driver.dto'
+
+export const multerStorageOptions = (folder: string) =>
+	diskStorage({
+		destination: `./uploads/${folder}`,
+		filename: (req, file, cb) => {
+			const randomName = Array(32)
+				.fill(null)
+				.map(() => Math.round(Math.random() * 16).toString(16))
+				.join('')
+
+			cb(null, `${randomName}${extname(file.originalname)}`)
+		}
+	})
+
+export const imageFileFilter = (req, file, callback) => {
+	if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+		return callback(
+			new BadRequestException('Only image files are allowed!'),
+			false
+		)
+	}
+	callback(null, true)
+}
+
+export const mediaFileFilter = (req, file, callback) => {
+	if (!file.originalname.match(/\.(jpg|jpeg|png|gif|mp4|mov|avi)$/)) {
+		return callback(
+			new BadRequestException('Only image and video files are allowed!'),
+			false
+		)
+	}
+	callback(null, true)
+}
 
 @ApiTags('Driver')
 @ApiBearerAuth()
@@ -127,15 +165,8 @@ export class DriverController {
 				{ name: 'video', maxCount: 1 }
 			],
 			{
-				storage: diskStorage({
-					destination: './uploads/vehicles',
-					filename: (req, file, cb) => {
-						const uniqueSuffix =
-							Date.now() + '-' + Math.round(Math.random() * 1e9)
-						const extension = file.originalname.split('.').pop()
-						cb(null, `${file.filename}-${uniqueSuffix}.${extension}`)
-					}
-				})
+				storage: multerStorageOptions('vehicles'),
+				fileFilter: mediaFileFilter
 			}
 		)
 	)
@@ -174,15 +205,8 @@ export class DriverController {
 				{ name: 'selfieWithLicense', maxCount: 1 }
 			],
 			{
-				storage: diskStorage({
-					destination: './uploads/documents',
-					filename: (req, file, cb) => {
-						const uniqueSuffix =
-							Date.now() + '-' + Math.round(Math.random() * 1e9)
-						const extension = file.originalname.split('.').pop()
-						cb(null, `${file.fieldname}-${uniqueSuffix}.${extension}`)
-					}
-				})
+				storage: multerStorageOptions('documents'),
+				fileFilter: imageFileFilter
 			}
 		)
 	)
@@ -271,5 +295,46 @@ export class DriverController {
 	@HttpCode(HttpStatus.OK)
 	async getMyEarnings(@CurrentDriver('id') driverId: string) {
 		return this.driverService.getMyEarnings(driverId)
+	}
+
+	@Patch('orders/:id/on-the-way')
+	@ApiOperation({ summary: 'Mark that you are on the way to the client' })
+	async setOnTheWay(
+		@CurrentDriver('id') driverId: string,
+		@Param('id') orderId: string
+	) {
+		return this.driverService.updateOrderStatus(driverId, orderId, 'ON_THE_WAY')
+	}
+
+	@Patch('orders/:id/arrived')
+	@ApiOperation({
+		summary: 'Mark that you have arrived at the pickup location'
+	})
+	async setArrived(
+		@CurrentDriver('id') driverId: string,
+		@Param('id') orderId: string
+	) {
+		return this.driverService.updateOrderStatus(driverId, orderId, 'ARRIVED')
+	}
+
+	@Post('orders/:id/no-show')
+	@UseInterceptors(
+		FileInterceptor('photo', {
+			storage: multerStorageOptions('proofs'),
+			fileFilter: imageFileFilter,
+			limits: { fileSize: 1024 * 1024 * 5 }
+		})
+	)
+	@ApiOperation({ summary: 'Report that the client did not show up' })
+	async reportClientNoShow(
+		@CurrentDriver('id') driverId: string,
+		@Param('id') orderId: string,
+		@UploadedFile() photo: Express.Multer.File
+	) {
+		if (!photo) {
+			throw new BadRequestException('A photo proof is required.')
+		}
+
+		return this.driverService.reportClientNoShow(driverId, orderId, photo.path)
 	}
 }

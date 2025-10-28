@@ -20,6 +20,7 @@ import { PdfService } from 'src/pdf/pdf.service'
 import Stripe from 'stripe'
 import { PaymentService } from './payment.service'
 
+import { SkipThrottle } from '@nestjs/throttler'
 import type { Queue } from 'bull'
 import { PAYMENT_QUEUE } from './constants'
 
@@ -57,6 +58,7 @@ export class PaymentController {
 		}
 	}
 
+	@SkipThrottle()
 	@Post('webhook')
 	@ApiOperation({ summary: 'Handle Stripe webhooks' })
 	async handleWebhook(
@@ -82,11 +84,6 @@ export class PaymentController {
 
 		if (event.type === 'payment_intent.succeeded') {
 			const paymentIntent = event.data.object as Stripe.PaymentIntent
-
-			console.log('PaymentIntent was successful!', paymentIntent.id)
-			console.log('--- Metadata from Stripe ---')
-			console.log(paymentIntent.metadata)
-			console.log('----------------------------')
 
 			const orderDetailsRaw = paymentIntent.metadata?.order_details
 			const clientId = paymentIntent.metadata?.client_id
@@ -115,25 +112,34 @@ export class PaymentController {
 					paymentIntentId: paymentIntent.id
 				})
 
-				console.log(
-					`Successfully created order in DB (ID: ${newOrder.id}) for PI: ${paymentIntent.id}`
-				)
+				if ('id' in newOrder) {
+					console.log(
+						`Successfully created order in DB (ID: ${newOrder.id}) for PI: ${paymentIntent.id}`
+					)
 
-				try {
-					const pdfBuffer = await this.pdfService.generateVoucher(
-						newOrder,
-						'en'
-					)
-					await this.emailService.sendVoucher(
-						newOrder.customerEmail!,
-						newOrder,
-						pdfBuffer
-					)
-					console.log(`Successfully sent voucher to ${newOrder.customerEmail}`)
-				} catch (emailError) {
+					try {
+						const pdfBuffer = await this.pdfService.generateVoucher(
+							newOrder,
+							'en'
+						)
+						await this.emailService.sendVoucher(
+							newOrder.customerEmail!,
+							newOrder,
+							pdfBuffer
+						)
+						console.log(
+							`Successfully sent voucher to ${newOrder.customerEmail}`
+						)
+					} catch (emailError) {
+						console.error(
+							`FAILED TO SEND VOUCHER for order ${newOrder.id}`,
+							emailError
+						)
+					}
+				} else {
 					console.error(
-						`FAILED TO SEND VOUCHER for order ${newOrder.id}`,
-						emailError
+						`Order creation for PI ${paymentIntent.id} returned a job ID instead of an order object.`,
+						newOrder
 					)
 				}
 			} catch (error) {

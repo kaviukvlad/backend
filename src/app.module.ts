@@ -2,6 +2,7 @@ import { CacheModule } from '@nestjs/cache-manager'
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { APP_GUARD } from '@nestjs/core'
+import { ScheduleModule } from '@nestjs/schedule'
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 import * as redisStore from 'cache-manager-redis-store'
 import { AcceptLanguageResolver, I18nJsonLoader, I18nModule } from 'nestjs-i18n'
@@ -10,21 +11,28 @@ import { AdminModule } from './admin/admin.module'
 import { AuthModule } from './auth/auth.module'
 import { CarModule } from './car/car.module'
 import { ClientModule } from './client/client.module'
+import { CommissionModule } from './commission/commission.module'
 import { DriverModule } from './driver/driver.module'
 import { EmailModule } from './email/email.module'
 import { GeoModule } from './geo/geo.module'
+import { NotificationsModule } from './notifications/notifications.module'
+import { OperatorModule } from './operator/operator.module'
 import { OrderOptionsModule } from './order-options/order-options.module'
 import { OrdersModule } from './orders/orders.module'
 import { PartnerModule } from './partner/partner.module'
 import { PaymentModule } from './payment/payment.module'
 import { PdfModule } from './pdf/pdf.module'
 import { PricingModule } from './pricing/pricing.module'
+import { RatingModule } from './rating/rating.module'
 import { RegionModule } from './region/region.module'
+import { TasksModule } from './tasks/tasks.module'
+import { TelegramModule } from './telegram/telegram.module'
 import { UserModule } from './user/user.module'
 import { VehicleTypeModule } from './vehicle-type/vehicle-type.module'
 
 @Module({
 	imports: [
+		ScheduleModule.forRoot(),
 		CacheModule.registerAsync({
 			isGlobal: true,
 			imports: [ConfigModule],
@@ -68,7 +76,13 @@ import { VehicleTypeModule } from './vehicle-type/vehicle-type.module'
 		GeoModule,
 		OrderOptionsModule,
 		PricingModule,
-		PaymentModule
+		PaymentModule,
+		CommissionModule,
+		NotificationsModule,
+		OperatorModule,
+		TasksModule,
+		RatingModule,
+		TelegramModule
 	],
 	providers: [
 		{

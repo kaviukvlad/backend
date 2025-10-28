@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Request } from '@nestjs/common'
+import {
+	Body,
+	Controller,
+	Get,
+	Param,
+	Patch,
+	Post,
+	Request
+} from '@nestjs/common'
 import {
 	ApiBearerAuth,
 	ApiOperation,
@@ -9,8 +17,12 @@ import {
 import { UserRole } from 'prisma/generated/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { AdminService } from './admin.service'
+import { CreateOperatorDto } from './dto/create-operator.dto'
+import { CreateTariffDto } from './dto/create-tariff.dto'
 import { UpdateCarStatusDto } from './dto/update-car-status.dto'
 import { UpdateDocumentStatusDto } from './dto/update-document-status.dto'
+import { UpdateDriverCommissionDto } from './dto/update-driver-commission.dto'
+import { UpdateDriverVehicleTypesDto } from './dto/update-driver-vehicle-types.dto'
 
 @ApiTags('Admin Panel')
 @ApiBearerAuth()
@@ -118,5 +130,32 @@ export class AdminController {
 			dto.status,
 			adminUserId
 		)
+	}
+
+	@Patch('drivers/:id/commission')
+	updateDriverCommission(
+		@Param('id') id: string,
+		@Body() dto: UpdateDriverCommissionDto
+	) {
+		return this.adminService.updateDriverCommission(id, dto)
+	}
+
+	@Patch('drivers/:id/vehicle-types')
+	updateDriverAllowedVehicleTypes(
+		@Param('id') driverId: string,
+		@Body() dto: UpdateDriverVehicleTypesDto
+	) {
+		return this.adminService.updateDriverAllowedVehicleTypes(driverId, dto)
+	}
+
+	@Post('tariffs')
+	createTariff(@Body() dto: CreateTariffDto) {
+		return this.adminService.createTariff(dto)
+	}
+
+	@Post('operators')
+	@ApiOperation({ summary: 'Create a new operator user' })
+	createOperator(@Body() dto: CreateOperatorDto) {
+		return this.adminService.createOperator(dto)
 	}
 }

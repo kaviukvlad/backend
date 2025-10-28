@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator'
+import {
+	IsEnum,
+	IsNotEmpty,
+	IsNumber,
+	IsOptional,
+	IsString,
+	Min
+} from 'class-validator'
 import { RegionType } from 'prisma/generated/client'
 
 export class CreateRegionDto {
@@ -28,4 +35,17 @@ export class CreateRegionDto {
 	@IsOptional()
 	@IsString()
 	parentId?: string
+
+	@IsOptional()
+	@IsNumber()
+	latitude?: number
+
+	@IsOptional()
+	@IsNumber()
+	longitude?: number
+
+	@IsOptional()
+	@IsNumber()
+	@Min(1)
+	radiusKm?: number
 }

@@ -1,15 +1,21 @@
+import { InjectQueue } from '@nestjs/bull'
 import {
 	BadRequestException,
 	ForbiddenException,
 	Injectable,
 	NotFoundException
 } from '@nestjs/common'
-import { OrderOption, Partner } from 'prisma/generated/client'
+import type { Queue } from 'bull'
+import { randomUUID } from 'crypto'
+import { OrderOption, Partner, Prisma } from 'prisma/generated/client'
 import { GeoService } from 'src/geo/geo.service'
+import { NotificationsService } from 'src/notifications/notifications.service'
+import { CREATE_PAYMENT_JOB, PAYMENT_QUEUE } from 'src/payment/constants'
 import { PaymentService } from 'src/payment/payment.service'
 import { PricingService } from 'src/pricing/pricing.service'
 import { PrismaService } from 'src/prisma.service'
 import { CreateOrderDto } from './dto/create-order.dto'
+import { SearchOrderDto } from './dto/search-order.dto'
 import { UpdateOrderDto } from './dto/update-order.dto'
 
 @Injectable()
@@ -18,86 +24,230 @@ export class OrdersService {
 		private prisma: PrismaService,
 		private geoService: GeoService,
 		private pricingService: PricingService,
-		private paymentService: PaymentService
+		private paymentService: PaymentService,
+		private notificationsService: NotificationsService,
+		@InjectQueue(PAYMENT_QUEUE) private paymentQueue: Queue
 	) {}
+
+	private calculateDistance(
+		lat1: number,
+		lon1: number,
+		lat2: number,
+		lon2: number
+	): number {
+		const R = 6371
+		const dLat = (lat2 - lat1) * (Math.PI / 180)
+		const dLon = (lon2 - lon1) * (Math.PI / 180)
+		const a =
+			Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+			Math.cos(lat1 * (Math.PI / 180)) *
+				Math.cos(lat2 * (Math.PI / 180)) *
+				Math.sin(dLon / 2) *
+				Math.sin(dLon / 2)
+		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+		return R * c
+	}
 
 	async create(
 		dto: CreateOrderDto,
 		options: {
-			createId?: string
 			clientId?: string
 			partner?: Partner
 			paymentIntentId?: string
 		} = {}
 	) {
+		const tripTime = new Date(dto.trip_datetime)
+		const now = new Date()
+		const twentyFourHoursInMs = 24 * 60 * 60 * 1000
+
+		if (tripTime.getTime() - now.getTime() < twentyFourHoursInMs) {
+			throw new BadRequestException(
+				'Trip date and time must be at least 24 hours in the future.'
+			)
+		}
+
 		const { clientId, paymentIntentId, partner } = options
-		const regionExists = await this.prisma.region.findUnique({
+
+		const region = await this.prisma.region.findUnique({
 			where: { id: dto.regionId }
 		})
-		if (!regionExists) {
+		if (!region) {
 			throw new NotFoundException(`Region with ID ${dto.regionId} not found.`)
+		}
+
+		if (region.latitude && region.longitude && region.radiusKm) {
+			const pickupPoint = dto.waypoints[0]
+			if (
+				!pickupPoint ||
+				typeof pickupPoint.lat !== 'number' ||
+				typeof pickupPoint.lng !== 'number'
+			) {
+				throw new BadRequestException('Invalid pickup point coordinates.')
+			}
+			const distance = this.calculateDistance(
+				region.latitude,
+				region.longitude,
+				pickupPoint.lat,
+				pickupPoint.lng
+			)
+			if (distance > region.radiusKm) {
+				throw new BadRequestException(
+					`The pickup location is outside our ${region.radiusKm} km service area for this region.`
+				)
+			}
+		}
+
+		const vehicleType = await this.prisma.vehicleType.findUnique({
+			where: { id: dto.vehicleTypeId },
+			select: { code: true }
+		})
+		if (!vehicleType) {
+			throw new BadRequestException(
+				`VehicleType with ID ${dto.vehicleTypeId} not found.`
+			)
 		}
 
 		const { distanceInKm, durationInMinutes } =
 			await this.geoService.getDistanceAndDuration(dto.waypoints)
 
-		const finalPrice = await this.pricingService.calculateFinalPrice(
-			dto,
-			partner
-		)
-
 		const optionsFromDb = dto.selectedOptions?.length
 			? await this.prisma.orderOption.findMany({
 					where: {
-						id: {
-							in: dto.selectedOptions.map(o => o.optionId)
-						}
+						id: { in: dto.selectedOptions.map(o => o.optionId) }
 					}
 				})
 			: []
 
-		const newOrder = await this.prisma.order.create({
-			data: {
-				routeWaypoints: dto.waypoints as any,
-				customerEmail: dto.customerEmail,
-				trip_datetime: new Date(dto.trip_datetime),
-				passenger_count: dto.passenger_count,
-				regionId: dto.regionId,
-				flight_number: dto.flight_number,
-				notes: dto.notes,
-				luggage_standard: dto.luggage_standard,
-				luggage_small: dto.luggage_small,
-				distanceInKm,
-				durationInMinutes,
-				vehicleTypeId: dto.vehicleTypeId,
-				price: finalPrice,
-				status: 'NEW',
-				clientId: clientId ? clientId : null,
-				paymentIntentId: paymentIntentId ? paymentIntentId : null,
-				partnerId: partner ? partner.id : null,
-				selectedOptions: {
-					create: dto.selectedOptions?.map(opt => {
-						const dbOption = optionsFromDb.find(o => o.id === opt.optionId)!
-						return {
-							optionId: opt.optionId,
-							quantity: opt.quantity || 1,
-							priceAtTimeOfOrder: dbOption.price
-						}
-					})
-				}
+		const baseOrderData = {
+			routeWaypoints: dto.waypoints as any,
+			customerEmail: dto.customerEmail,
+			trip_datetime: new Date(dto.trip_datetime),
+			passenger_count: dto.passenger_count,
+			regionId: dto.regionId,
+			flight_number: dto.flight_number,
+			notes: dto.notes,
+			luggage_standard: dto.luggage_standard,
+			luggage_small: dto.luggage_small,
+			distanceInKm,
+			durationInMinutes,
+			vehicleTypeId: dto.vehicleTypeId,
+			clientId: clientId || null,
+			partnerId: partner?.id || null,
+			selectedOptions: {
+				create: dto.selectedOptions?.map(opt => {
+					const dbOption = optionsFromDb.find(o => o.id === opt.optionId)
+					if (!dbOption) {
+						throw new BadRequestException(
+							`Invalid order option ID: ${opt.optionId}`
+						)
+					}
+					return {
+						quantity: opt.quantity || 1,
+						priceAtTimeOfOrder: dbOption.price,
+						option: { connect: { id: opt.optionId } }
+					}
+				})
 			}
-		})
-		return newOrder
+		}
+
+		if (vehicleType.code === 'BUS') {
+			const busOrder = await this.prisma.order.create({
+				data: {
+					...baseOrderData,
+					price: 0,
+					status: 'PENDING_MANUAL_CONFIRMATION',
+					paymentIntentId: null
+				}
+			})
+
+			await this.notificationsService.sendBusOrderNotification(busOrder)
+
+			return busOrder
+		} else {
+			if (paymentIntentId) {
+				const finalPrice = await this.pricingService.calculateFinalPrice(
+					dto,
+					partner
+				)
+				const newOrder = await this.prisma.order.create({
+					data: {
+						...baseOrderData,
+						price: finalPrice,
+						status: 'NEW',
+						paymentIntentId: paymentIntentId
+					}
+				})
+				return newOrder
+			}
+
+			const finalPrice = await this.pricingService.calculateFinalPrice(
+				dto,
+				partner
+			)
+			const clientJobId = randomUUID()
+
+			await this.paymentQueue.add(
+				CREATE_PAYMENT_JOB,
+				{
+					amount: finalPrice,
+					currency: 'EUR',
+					orderDetails: dto,
+					clientId: clientId
+				},
+				{ jobId: clientJobId }
+			)
+
+			return {
+				jobId: clientJobId,
+				message: 'Payment creation has been queued.'
+			}
+		}
 	}
 
-	async findAll() {
+	async findAll(dto: SearchOrderDto) {
+		const where: Prisma.OrderWhereInput = {}
+
+		if (dto.search) {
+			const searchTerm = dto.search.toLowerCase()
+			where.OR = [
+				{ id: { contains: searchTerm, mode: 'insensitive' } },
+				{ customerEmail: { contains: searchTerm, mode: 'insensitive' } },
+				{ flight_number: { contains: searchTerm, mode: 'insensitive' } },
+				{ notes: { contains: searchTerm, mode: 'insensitive' } }
+			]
+		}
+
+		if (dto.status?.length) {
+			where.status = { in: dto.status }
+		}
+
+		if (dto.regionId) {
+			where.regionId = dto.regionId
+		}
+		if (dto.driverId) {
+			where.driverId = dto.driverId
+		}
+
+		if (dto.startDate || dto.endDate) {
+			where.trip_datetime = {
+				gte: dto.startDate ? new Date(dto.startDate) : undefined,
+				lte: dto.endDate ? new Date(dto.endDate) : undefined
+			}
+		}
+
 		return this.prisma.order.findMany({
+			where,
+			orderBy: {
+				createdAt: 'desc'
+			},
 			include: {
 				selectedOptions: {
 					include: {
 						option: true
 					}
-				}
+				},
+				driver: true,
+				region: true
 			}
 		})
 	}
@@ -326,12 +476,10 @@ export class OrdersService {
 			throw new BadRequestException('Це замовлення вже неможливо скасувати.')
 		}
 
-		// 1. Спочатку робимо повернення коштів, якщо є платіж
 		if (order.paymentIntentId) {
 			await this.paymentService.createRefund(order.paymentIntentId)
 		}
 
-		// 2. Тільки після успішного повернення оновлюємо статус в нашій БД
 		return this.prisma.order.update({
 			where: { id: orderId },
 			data: { status: 'CANCELLED' }

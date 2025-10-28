@@ -5,15 +5,59 @@ import {
 	NotFoundException
 } from '@nestjs/common'
 
-import { DocumentType, MediaType, Prisma } from 'prisma/generated/client'
+import {
+	DocumentType,
+	MediaType,
+	OrderStatus,
+	Prisma
+} from 'prisma/generated/client'
 import { CreateCarDto } from 'src/car/dto/create-car.dto'
 import { UpdateCarDto } from 'src/car/dto/update-car.dto'
+import { NotificationsService } from 'src/notifications/notifications.service'
+import { PricingService } from 'src/pricing/pricing.service'
 import { PrismaService } from 'src/prisma.service'
 import { UpdateDriverDto } from './dto/update-driver.dto'
 
 @Injectable()
 export class DriverService {
-	constructor(private prisma: PrismaService) {}
+	constructor(
+		private prisma: PrismaService,
+		private pricingService: PricingService,
+		private notificationsService: NotificationsService
+	) {}
+
+	private async calculateDriverEarnings(
+		orderPrice: number,
+		driverId: string
+	): Promise<number> {
+		const driverProfile = await this.prisma.driverProfile.findUnique({
+			where: { id: driverId },
+			select: { commissionPercent: true }
+		})
+
+		let commissionToApply: number
+
+		if (
+			driverProfile?.commissionPercent !== null &&
+			driverProfile?.commissionPercent !== undefined
+		) {
+			commissionToApply = driverProfile.commissionPercent.toNumber()
+		} else {
+			const globalCommission = this.pricingService.getSetting(
+				'DEFAULT_DRIVER_COMMISSION_PERCENT'
+			)
+			if (globalCommission === undefined) {
+				console.error('DEFAULT_DRIVER_COMMISSION_PERCENT is not set!')
+
+				commissionToApply = 20
+			} else {
+				commissionToApply = globalCommission
+			}
+		}
+
+		const earnings = orderPrice * (1 - commissionToApply / 100)
+		return parseFloat(earnings.toFixed(2))
+	}
 
 	getById(id: string) {
 		return this.prisma.driverProfile.findUnique({
@@ -248,10 +292,22 @@ export class DriverService {
 		const driverProfile = await this.prisma.driverProfile.findUnique({
 			where: { id: driverId },
 			include: {
+				user: {
+					select: {
+						role: true
+					}
+				},
 				cars: {
-					where: { verification_status: 'APPROVED' },
+					where: {
+						verification_status: 'APPROVED'
+					},
 					include: {
 						vehicle_type: true
+					}
+				},
+				allowedVehicleTypes: {
+					select: {
+						id: true
 					}
 				}
 			}
@@ -260,19 +316,16 @@ export class DriverService {
 		if (!driverProfile) {
 			throw new NotFoundException('Driver profile not found.')
 		}
-
 		if (driverProfile.status !== 1) {
 			throw new ForbiddenException(
 				'Your profile has not yet been approved by the administrator.'
 			)
 		}
-
 		if (driverProfile.cars.length === 0) {
 			throw new ForbiddenException(
 				'You have no approved cars to accept orders.'
 			)
 		}
-
 		if (!driverProfile.regionId) {
 			throw new BadRequestException(
 				'Your profile does not have a region assigned. Please contact the administrator.'
@@ -289,16 +342,38 @@ export class DriverService {
 			}
 		})
 
+		const isOperator = driverProfile.user.role === 'OPERATOR'
+
 		const suitableOrders = ordersInRegion.filter(order => {
-			return driverProfile.cars.some(
+			const luggageFits = driverProfile.cars.some(
 				car =>
 					car.vehicle_type.max_luggage_standard >=
 						(order.luggage_standard || 0) &&
 					car.vehicle_type.max_luggage_small >= (order.luggage_small || 0)
 			)
+			if (!luggageFits) return false
+
+			if (isOperator) {
+				return true
+			}
+
+			const allowedVehicleTypeIds = driverProfile.allowedVehicleTypes.map.call(
+				vt => vt.id
+			)
+			return allowedVehicleTypeIds.include(order.vehicleTypeId)
 		})
 
-		return suitableOrders
+		const ordersWithEarnings = await Promise.all(
+			suitableOrders.map(async order => {
+				const priceForDriver = await this.calculateDriverEarnings(
+					order.price.toNumber(),
+					driverId
+				)
+				return { ...order, priceForDriver }
+			})
+		)
+
+		return ordersWithEarnings
 	}
 
 	private async verifyOrderOwnership(driverId: string, orderId: string) {
@@ -315,7 +390,7 @@ export class DriverService {
 	}
 
 	async getMyCurrentOrders(driverId: string) {
-		return this.prisma.order.findMany({
+		const order = await this.prisma.order.findMany({
 			where: {
 				driverId,
 				status: {
@@ -326,10 +401,20 @@ export class DriverService {
 				trip_datetime: 'asc'
 			}
 		})
+
+		return Promise.all(
+			order.map(async order => ({
+				...order,
+				priceForDriver: await this.calculateDriverEarnings(
+					order.price.toNumber(),
+					driverId
+				)
+			}))
+		)
 	}
 
 	async getMyCompletedOrders(driverId: string) {
-		return this.prisma.order.findMany({
+		const orders = await this.prisma.order.findMany({
 			where: {
 				driverId,
 				status: 'COMPLETED'
@@ -338,6 +423,16 @@ export class DriverService {
 				trip_datetime: 'desc'
 			}
 		})
+
+		return Promise.all(
+			orders.map(async order => ({
+				...order,
+				priceForDriver: await this.calculateDriverEarnings(
+					order.price.toNumber(),
+					driverId
+				)
+			}))
+		)
 	}
 
 	async startOrder(driverId: string, orderId: string) {
@@ -369,22 +464,107 @@ export class DriverService {
 	}
 
 	async getMyEarnings(driverId: string) {
-		const result = await this.prisma.order.aggregate({
+		const completedOrder = await this.prisma.order.findMany({
 			where: {
 				driverId,
 				status: 'COMPLETED'
 			},
-			_sum: {
-				price: true
-			},
-			_count: {
-				id: true
-			}
+			select: { price: true }
 		})
 
-		return {
-			totalEarnings: result._sum.price || 0,
-			completedOrdersCount: result._count.id || 0
+		if (completedOrder.length === 0) {
+			return {
+				totalEarnings: 0,
+				completedOrdersCount: 0
+			}
 		}
+
+		const totalEarnings = await completedOrder.reduce(
+			async (sumPromise, order) => {
+				const sum = await sumPromise
+				const earning = await this.calculateDriverEarnings(
+					order.price.toNumber(),
+					driverId
+				)
+				return sum + earning
+			},
+			Promise.resolve(0)
+		)
+
+		return {
+			totalEarnings: parseFloat(totalEarnings.toFixed(2)),
+			completedOrdersCount: completedOrder.length
+		}
+	}
+
+	async updateOrderStatus(
+		driverId: string,
+		orderId: string,
+		status: OrderStatus
+	) {
+		const order = await this.verifyOrderOwnership(driverId, orderId)
+
+		const allowedTransitions = {
+			ACCEPTED: ['ON_THE_WAY'],
+			ON_THE_WAY: ['ARRIVED']
+		}
+
+		if (!allowedTransitions[order.status]?.includes(status)) {
+			throw new BadRequestException(
+				`Cannot change status from ${order.status} to ${status}.`
+			)
+		}
+
+		return this.prisma.order.update({
+			where: { id: orderId },
+			data: { status }
+		})
+	}
+
+	async reportClientNoShow(
+		driverId: string,
+		orderId: string,
+		photoPath: string
+	) {
+		const order = await this.verifyOrderOwnership(driverId, orderId)
+
+		if (order.status !== 'ARRIVED') {
+			throw new BadRequestException(
+				'You can only report a no-show after arriving at the pickup location.'
+			)
+		}
+
+		return this.prisma.$transaction(async tx => {
+			const updatedOrder = await tx.order.update({
+				where: { id: orderId },
+				data: { status: 'CLIENT_NO_SHOW' },
+
+				include: {
+					client: {
+						select: {
+							user: {
+								select: {
+									phone: true
+								}
+							}
+						}
+					}
+				}
+			})
+
+			await tx.orderNoShowProof.create({
+				data: {
+					orderId: orderId,
+					imageUrl: photoPath
+				}
+			})
+
+			await this.notificationsService.sendClientNoShowProof(
+				updatedOrder,
+				photoPath
+			)
+
+			return updatedOrder
+		})
 	}
 }

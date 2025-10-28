@@ -21,8 +21,6 @@ export class PaymentProcessor {
 		const { amount, currency, orderDetails, clientId } = job.data
 
 		try {
-			console.log(`[Job ${jobId}] Processing payment intent creation...`)
-
 			const paymentIntent = await this.paymentService.createPaymentIntent(
 				amount,
 				currency,
@@ -38,7 +36,6 @@ export class PaymentProcessor {
 			}
 			await this.cacheManager.set(cacheKey, cacheValue, 3600)
 
-			console.log(`[Job ${jobId}] Completed and result cached.`)
 			return cacheValue
 		} catch (error) {
 			console.error(`[Job ${jobId}] Failed to process payment intent.`, error)
