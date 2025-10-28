@@ -34,7 +34,7 @@ USER appuser
 COPY package.json pnpm-lock.yaml ./
 
 
-RUN pnpm install --prod
+RUN pnpm install 
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
