@@ -8,26 +8,21 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm
 
-# Copy package files and install all deps (including dev)
+# Install dependencies (dev deps required for build)
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install
 
-# Copy source
+# Copy source code
 COPY . .
 
-# Generate prisma client (writes to node_modules/.prisma) BEFORE build so types exist
+# Generate Prisma client (create node_modules/.prisma)
 RUN pnpm prisma generate
 
-# Build the project and compile seed.ts into dist/src
+# Build NestJS
 RUN pnpm run build
-RUN pnpm exec tsc src/seed.ts --outDir dist/src --resolveJsonModule true --esModuleInterop true --module commonjs --target es2021
 
-# Prepare a stable copy of generated prisma runtime for copying to production
-RUN mkdir -p /app/.prisma || true
-RUN sh -c 'if [ -d "node_modules/.prisma" ]; then cp -a node_modules/.prisma /app/.prisma; elif [ -d "prisma/generated" ]; then mkdir -p /app/.prisma/client && cp -a prisma/generated/* /app/.prisma/client/; fi' || true
-
-# Ensure /app/dist exists (build artifacts)
-RUN mkdir -p /app/dist || true
+# Copy generated prisma runtime to stable location for prod
+RUN mkdir -p /app/.prisma && cp -a node_modules/.prisma /app/.prisma || true
 
 # --- Stage: production ---
 FROM node:18-alpine AS production
@@ -54,5 +49,5 @@ COPY --chown=appuser:appgroup --from=builder /app/.prisma ./node_modules/.prisma
 
 EXPOSE 3000
 
-# Run migrations, seed and start app
+# Run migrations and start app
 CMD ["sh", "-c", "pnpm prisma migrate deploy && node dist/main.js"]
