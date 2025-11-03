@@ -31,7 +31,10 @@ RUN pnpm install --prod
 COPY --chown=appuser:appgroup --from=builder /app/dist ./dist
 COPY --chown=appuser:appgroup --from=builder /app/prisma ./prisma
 
+# ---- НОВЕ: скопіювати згенеровані runtime файли Prisma ----
+# Це забезпечить наявність node_modules/.prisma/client у production образі
+COPY --chown=appuser:appgroup --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
 EXPOSE 3000
 
-# Команда запуску тепер знайде seed.js
 CMD ["sh", "-c", "pnpm prisma migrate deploy && pnpm run prisma:seed:prod && node dist/main.js"]
