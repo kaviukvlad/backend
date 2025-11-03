@@ -37,7 +37,43 @@ export class RegionController {
 		description: 'Region tree successfully retrieved.',
 		schema: {
 			type: 'array',
-			items: { $ref: getSchemaPath(RegionResponseDto) }
+			items: { $ref: getSchemaPath(RegionResponseDto) },
+			example: [
+				{
+					id: 'clwtrjfuq000111a9f1a2g8f1',
+					parent_id: null,
+					name: 'Paris',
+					type: 'CITY',
+					latitude: 48.8566,
+					longitude: 2.3522,
+					radiusKm: 100,
+					translations: [{ id: 'trans_id_1', name: 'Paris' }],
+					children: [
+						{
+							id: 'clwtrjfuq000211a9f1a2g8f1',
+							parent_id: 'clwtrjfuq000111a9f1a2g8f1',
+							name: 'Charles de Gaulle Airport (CDG)',
+							type: 'AIRPORT',
+							latitude: 49.0097,
+							longitude: 2.5479,
+							radiusKm: null,
+							children: [],
+							translations: []
+						}
+					]
+				},
+				{
+					id: 'clwtrjfuq000311a9f1a2g8f1',
+					parent_id: null,
+					name: 'Lviv',
+					type: 'CITY',
+					latitude: 49.8397,
+					longitude: 24.0297,
+					radiusKm: 60,
+					children: [],
+					translations: []
+				}
+			]
 		}
 	})
 	async findAll() {
@@ -67,6 +103,15 @@ export class RegionController {
 	}
 
 	@Patch(':id')
+	@ApiOperation({ summary: 'Update region details (for admin)' })
+	@ApiBearerAuth()
+	@Auth(UserRole.ADMIN)
+	@ApiParam({ name: 'id', description: 'ID of the region to update' })
+	@ApiResponse({
+		status: 200,
+		description: 'Region updated successfully.'
+	})
+	@ApiResponse({ status: 404, description: 'Region not found.' })
 	update(@Param('id') id: string, @Body() updateRegionDto: UpdateRegionDto) {
 		console.log(`Trying to update region with ID: ${id}`)
 		return this.regionService.updata(id, updateRegionDto)

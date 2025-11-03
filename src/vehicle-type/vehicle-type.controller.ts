@@ -26,7 +26,43 @@ export class VehicleTypeController {
 	})
 	@ApiResponse({
 		status: 200,
-		description: 'List of car types successfully received.'
+		description: 'List of car types successfully received.',
+		schema: {
+			example: [
+				{
+					id: 'clwtrgq5n000011a9d7z7f9c3',
+					code: 'STANDARD',
+					name: 'Standard',
+					max_passengers: 3,
+					max_luggage_standard: 2,
+					max_luggage_small: 1
+				},
+				{
+					id: 'clwtrgq5n000111a9d7z7f9c3',
+					code: 'BUSINESS',
+					name: 'Business',
+					max_passengers: 3,
+					max_luggage_standard: 2,
+					max_luggage_small: 2
+				},
+				{
+					id: 'clwtrgq5n000211a9d7z7f9c3',
+					code: 'MINIVAN',
+					name: 'Minivan',
+					max_passengers: 7,
+					max_luggage_standard: 6,
+					max_luggage_small: 2
+				},
+				{
+					id: 'clwtrgq5n000311a9d7z7f9c3',
+					code: 'BUS',
+					name: 'Bus',
+					max_passengers: 16,
+					max_luggage_standard: 16,
+					max_luggage_small: 16
+				}
+			]
+		}
 	})
 	async findAll(@Locale() locale: string) {
 		return this.vehicleTypeService.findAll(locale)

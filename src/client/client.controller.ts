@@ -30,11 +30,40 @@ export class ClientController {
 	@ApiOperation({ summary: 'Get current client profile' })
 	@ApiResponse({
 		status: HttpStatus.OK,
-		description: 'Profile successfully retrieved.'
+		description: 'Profile successfully retrieved.',
+		schema: {
+			example: {
+				id: 'clwvopxid000111a9h3e4b3y4',
+				userId: 'clwtrjfuq000511a9f1a2g8f1',
+				name: 'Client Anton',
+				isSubscribedToNewsletter: true,
+				user: {
+					email: 'client1@test.com',
+					phone: '+38000000003'
+				}
+			}
+		}
 	})
 	@ApiResponse({
 		status: HttpStatus.UNAUTHORIZED,
-		description: 'Unauthorized access.'
+		description: 'Unauthorized access.',
+		schema: {
+			example: {
+				statusCode: 401,
+				message: 'Unauthorized'
+			}
+		}
+	})
+	@ApiResponse({
+		status: HttpStatus.NOT_FOUND,
+		description: 'Client profile not found (e.g., deleted or invalid ID).',
+		schema: {
+			example: {
+				statusCode: 404,
+				message: 'Client profile not found.',
+				error: 'Not Found'
+			}
+		}
 	})
 	@Auth(UserRole.USER)
 	@HttpCode(HttpStatus.OK)

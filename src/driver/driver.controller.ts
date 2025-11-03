@@ -13,16 +13,12 @@ import {
 	UploadedFiles,
 	UseInterceptors
 } from '@nestjs/common'
-import {
-	FileFieldsInterceptor,
-	FileInterceptor
-} from '@nestjs/platform-express'
+import { FileInterceptor } from '@nestjs/platform-express'
 import {
 	ApiBearerAuth,
-	ApiBody,
-	ApiConsumes,
 	ApiOperation,
 	ApiParam,
+	ApiResponse,
 	ApiTags
 } from '@nestjs/swagger'
 import { UserRole, type DriverProfile } from '@prisma/client'
@@ -78,6 +74,34 @@ export class DriverController {
 	@Get('profile')
 	@ApiOperation({ summary: 'Get current driver profile' })
 	@Auth()
+	@ApiResponse({
+		status: 200,
+		description: 'Driver profile',
+		schema: {
+			example: {
+				id: 'clwtrjfuq000411a9f1a2g8f1',
+				userId: 'clwtrjfuq000311a9f1a2g8f1',
+				name: 'Jean Pierre',
+				regionId: 'clwtrjfuq000111a9f1a2g8f1',
+				rating: 5.0,
+				status: 1,
+				commissionPercent: '15.00',
+				region: { id: 'clwtrjfuq000111a9f1a2g8f1', name: 'Paris' /* ... */ },
+				cars: [{ id: 'car_id_1', brand: 'Mercedes-Benz', model: 'E-Class' }]
+			}
+		}
+	})
+	@ApiResponse({
+		status: 404,
+		description: 'Profile not found (unlikely with this decorator)',
+		schema: {
+			example: {
+				statusCode: 404,
+				message: 'Driver profile not found.',
+				error: 'Not Found'
+			}
+		}
+	})
 	async getProfile(@CurrentDriver('id') id: string) {
 		return this.driverService.getById(id)
 	}
@@ -104,6 +128,25 @@ export class DriverController {
 	@Get('cars')
 	@ApiOperation({ summary: 'Get a list of your cars' })
 	@Auth()
+	@ApiResponse({
+		status: 200,
+		description: "List of driver's cars",
+		schema: {
+			example: [
+				{
+					id: 'clwtrjfuq000411a9f1a2g8f1',
+					driverId: 'clwtrjfuq000311a9f1a2g8f1',
+					vehicle_type_id: 'clwtrgq5n000011a9d7z7f9c3',
+					brand: 'Mercedes-Benz',
+					model: 'E-Class',
+					year: 2022,
+					color: 'Black',
+					license_plate: 'FR-123-AB',
+					verification_status: 'APPROVED'
+				}
+			]
+		}
+	})
 	async getMyCars(@CurrentDriver() driver: DriverProfile) {
 		return this.driverService.getCarsByDriverID(driver.id)
 	}
@@ -147,29 +190,6 @@ export class DriverController {
 	@Post('cars/:id/media')
 	@Auth()
 	@ApiOperation({ summary: 'Upload photo/video for car verification' })
-	@ApiParam({ name: 'id', description: 'Vehicle ID' })
-	@ApiConsumes('multipart/form-data')
-	@ApiBody({
-		schema: {
-			type: 'object',
-			properties: {
-				photos: { type: 'array', items: { type: 'string', format: 'binary' } },
-				video: { type: 'string', format: 'binary' }
-			}
-		}
-	})
-	@UseInterceptors(
-		FileFieldsInterceptor(
-			[
-				{ name: 'photos', maxCount: 6 },
-				{ name: 'video', maxCount: 1 }
-			],
-			{
-				storage: multerStorageOptions('vehicles'),
-				fileFilter: mediaFileFilter
-			}
-		)
-	)
 	async uploadCarMedia(
 		@CurrentDriver() driver: DriverProfile,
 		@Param('id') cardId: string,
@@ -184,32 +204,7 @@ export class DriverController {
 
 	@Post('documents/verification')
 	@Auth()
-	@Post('documents/verification')
 	@ApiOperation({ summary: 'Upload driver verification documents' })
-	@ApiConsumes('multipart/form-data')
-	@ApiBody({
-		schema: {
-			type: 'object',
-			properties: {
-				driversLicense: { type: 'string', format: 'binary' },
-				vehicleRegistration: { type: 'string', format: 'binary' },
-				selfieWithLicense: { type: 'string', format: 'binary' }
-			}
-		}
-	})
-	@UseInterceptors(
-		FileFieldsInterceptor(
-			[
-				{ name: 'driversLicense', maxCount: 1 },
-				{ name: 'vehicleRegistration', maxCount: 1 },
-				{ name: 'selfieWithLicense', maxCount: 1 }
-			],
-			{
-				storage: multerStorageOptions('documents'),
-				fileFilter: imageFileFilter
-			}
-		)
-	)
 	async uploadVerificationDocuments(
 		@CurrentDriver('id') driverId: string,
 		@UploadedFiles()
@@ -233,6 +228,40 @@ export class DriverController {
 	@Auth()
 	@ApiOperation({ summary: 'Get list of available orders' })
 	@HttpCode(HttpStatus.OK)
+	@ApiResponse({
+		status: 200,
+		description: 'Successfully retrieved the list of available orders.',
+		schema: {
+			example: [
+				{
+					id: 'clwvoqj5o000211a9g74h3z7r',
+					clientId: 'clwvopxid000111a9h3e4b3y4',
+					regionId: 'clwtrjfuq000411a9f1a2g8f1',
+					vehicleTypeId: 'clwtrgq5n000011a9d7z7f9c3',
+					status: 'NEW',
+					price: 65.0,
+					trip_datetime: '2025-11-05T10:00:00.000Z',
+					passenger_count: 2,
+					routeWaypoints: [
+						{ lat: 49.8015, lng: 23.956, address: 'Lviv Airport (LWO)' },
+						{ lat: 49.842, lng: 24.032, address: 'Rynok Square, Lviv' }
+					],
+					priceForDriver: 52.0
+				}
+			]
+		}
+	})
+	@ApiResponse({
+		status: 403,
+		description: 'Access denied (profile not approved OR no approved cars)',
+		schema: {
+			example: {
+				statusCode: 403,
+				message: 'Your profile has not yet been approved by the administrator.',
+				error: 'Forbidden'
+			}
+		}
+	})
 	async getAvailableOrders(@CurrentDriver('id') driverId: string) {
 		return this.driverService.getAvailableOrders(driverId)
 	}
@@ -242,6 +271,35 @@ export class DriverController {
 	@ApiOperation({ summary: 'Accept order' })
 	@ApiParam({ name: 'id', description: 'Order ID' })
 	@HttpCode(HttpStatus.OK)
+	@ApiResponse({
+		status: 200,
+		description: 'Order successfully accepted',
+		schema: {
+			example: { id: 'clwvoqj5o000211a9g74h3z7r', status: 'ACCEPTED' /* ... */ }
+		}
+	})
+	@ApiResponse({
+		status: 403,
+		description: 'Denied (profile not approved OR no approved cars)',
+		schema: {
+			example: {
+				statusCode: 403,
+				message: 'You have no approved cars.',
+				error: 'Forbidden'
+			}
+		}
+	})
+	@ApiResponse({
+		status: 400,
+		description: 'Order is no longer available (e.g., already accepted)',
+		schema: {
+			example: {
+				statusCode: 400,
+				message: 'Order is not available.',
+				error: 'Bad Request'
+			}
+		}
+	})
 	async acceptOrder(
 		@CurrentDriver('id') driverId: string,
 		@Param('id') orderId: string
@@ -253,6 +311,25 @@ export class DriverController {
 	@Auth()
 	@ApiOperation({ summary: 'Get your current (active) orders' })
 	@HttpCode(HttpStatus.OK)
+	@ApiResponse({
+		status: 200,
+		description: 'List of active orders (ACCEPTED, ON_THE_WAY, ARRIVED)',
+		schema: {
+			example: [
+				{
+					id: 'clwvoqj5o000211a9g74h3z7r',
+					status: 'ACCEPTED',
+					price: 95.0,
+					trip_datetime: '2025-11-04T16:00:00.000Z',
+					priceForDriver: 76.0
+				}
+			]
+		}
+	})
+	@ApiResponse({
+		status: 403,
+		description: 'Profile not approved (see /available example)'
+	})
 	async getMyCurrentOrders(@CurrentDriver('id') driverId: string) {
 		return this.driverService.getMyCurrentOrders(driverId)
 	}
@@ -261,6 +338,25 @@ export class DriverController {
 	@Auth()
 	@ApiOperation({ summary: 'Get the history of your completed orders' })
 	@HttpCode(HttpStatus.OK)
+	@ApiResponse({
+		status: 200,
+		description: 'List of completed orders (COMPLETED)',
+		schema: {
+			example: [
+				{
+					id: 'clwvoqj5o000211a9g74h3z7r',
+					status: 'COMPLETED',
+					price: 120.5,
+					trip_datetime: '2025-10-30T14:30:00.000Z',
+					priceForDriver: 102.42
+				}
+			]
+		}
+	})
+	@ApiResponse({
+		status: 403,
+		description: 'Profile not approved (see /available example)'
+	})
 	async getMyCompletedOrders(@CurrentDriver('id') driverId: string) {
 		return this.driverService.getMyCompletedOrders(driverId)
 	}
@@ -274,6 +370,7 @@ export class DriverController {
 		@CurrentDriver('id') driverId: string,
 		@Param('id') orderId: string
 	) {
+		// TODO: Add @ApiResponse for 400 Bad Request if status is not 'ACCEPTED'
 		return this.driverService.startOrder(driverId, orderId)
 	}
 
@@ -286,6 +383,7 @@ export class DriverController {
 		@CurrentDriver('id') driverId: string,
 		@Param('id') orderId: string
 	) {
+		// TODO: Add @ApiResponse for 400 Bad Request if status is not 'IN_PROGRESS'
 		return this.driverService.completeOrder(driverId, orderId)
 	}
 
@@ -293,6 +391,20 @@ export class DriverController {
 	@Auth()
 	@ApiOperation({ summary: 'Get statistics of your earnings' })
 	@HttpCode(HttpStatus.OK)
+	@ApiResponse({
+		status: 200,
+		description: 'Overall earnings statistics',
+		schema: {
+			example: {
+				totalEarnings: 102.42,
+				completedOrdersCount: 1
+			}
+		}
+	})
+	@ApiResponse({
+		status: 403,
+		description: 'Profile not approved (see /available example)'
+	})
 	async getMyEarnings(@CurrentDriver('id') driverId: string) {
 		return this.driverService.getMyEarnings(driverId)
 	}

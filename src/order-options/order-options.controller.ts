@@ -30,7 +30,37 @@ export class OrderOptionsController {
 	@ApiOperation({ summary: 'Get a list of all active add-ons' })
 	@ApiResponse({
 		status: 200,
-		description: 'List of options successfully received.'
+		description: 'List of options successfully received.',
+		schema: {
+			example: [
+				{
+					id: 'clwtrjfuq000a11a9f1a2g8f1',
+					code: 'CHILD_SEAT_0_3',
+					name: 'Child Seat (0-3 years)',
+					description: 'Certified child seat for infants.',
+					price: '0.00',
+					isActive: true
+				},
+				{
+					id: 'clwtrjfuq000b11a9f1a2g8f1',
+					code: 'EXTRA_BAGGAGE',
+					name: 'Extra Baggage',
+					description: 'One additional standard suitcase.',
+					price: '10.00',
+					isActive: true
+				}
+			]
+		}
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Unauthorized access.',
+		schema: {
+			example: {
+				statusCode: 401,
+				message: 'Unauthorized'
+			}
+		}
 	})
 	@Auth()
 	findAllActive() {

@@ -45,6 +45,42 @@ export class OrdersController {
 
 	@Get('my')
 	@ApiOperation({ summary: 'Get my order history' })
+	@ApiResponse({
+		status: 200,
+		description: 'A list of the current client_s orders.',
+		schema: {
+			example: [
+				{
+					id: 'clwvoqj5o000211a9g74h3z7r',
+					status: 'COMPLETED',
+					price: '120.50',
+					trip_datetime: '2025-10-30T14:30:00.000Z',
+					driver: {
+						name: 'Jean Pierre',
+						user: { phone: '+38000000005' }
+					},
+					car: {
+						brand: 'Mercedes-Benz',
+						model: 'E-Class',
+						license_plate: 'FR-123-AB'
+					}
+				},
+				{
+					id: 'clwvoqj5o000311a9g74h3z7r',
+					status: 'NEW',
+					price: '65.00',
+					trip_datetime: '2025-11-05T10:00:00.000Z',
+					driver: null,
+					car: null
+				}
+			]
+		}
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Unauthorized access.',
+		schema: { example: { statusCode: 401, message: 'Unauthorized' } }
+	})
 	@Auth(UserRole.USER)
 	async getMyOrders(@CurrentClient('id') clientId: string) {
 		return this.ordersService.findMyOrders(clientId)
@@ -52,6 +88,58 @@ export class OrdersController {
 
 	@Get('my/:id')
 	@ApiOperation({ summary: 'Get details of a specific one of my orders' })
+	@ApiResponse({
+		status: 200,
+		description: 'Detailed information for a single order.',
+		schema: {
+			example: {
+				id: 'clwvoqj5o000211a9g74h3z7r',
+				status: 'COMPLETED',
+				price: '120.50',
+				trip_datetime: '2025-10-30T14:30:00.000Z',
+				passenger_count: 1,
+				notes: 'Please be on time, important meeting.',
+				selectedOptions: [],
+				driver: {
+					name: 'Jean Pierre',
+					user: { phone: '+38000000005' }
+				},
+				car: {
+					brand: 'Mercedes-Benz',
+					model: 'E-Class',
+					color: 'Black',
+					license_plate: 'FR-123-AB'
+				}
+			}
+		}
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Unauthorized access.',
+		schema: { example: { statusCode: 401, message: 'Unauthorized' } }
+	})
+	@ApiResponse({
+		status: 403,
+		description: 'Forbidden. Client does not own this order.',
+		schema: {
+			example: {
+				statusCode: 403,
+				message: 'You do not have access to this order.',
+				error: 'Forbidden'
+			}
+		}
+	})
+	@ApiResponse({
+		status: 404,
+		description: 'Order not found.',
+		schema: {
+			example: {
+				statusCode: 404,
+				message: 'Order with ID ... not found.',
+				error: 'Not Found'
+			}
+		}
+	})
 	@Auth(UserRole.USER)
 	async getMyOrderById(
 		@Param('id') orderId: string,
@@ -88,7 +176,45 @@ export class OrdersController {
 
 	@Get()
 	@ApiOperation({ summary: 'Get a list of all orders with filters' })
-	@ApiResponse({ status: 200, description: 'Order list received.' })
+	@ApiResponse({
+		status: 200,
+		description: 'Order list received.',
+		schema: {
+			example: [
+				{
+					id: 'clwvoqj5o000211a9g74h3z7r',
+					status: 'NEW',
+					price: '65.00',
+					trip_datetime: '2025-11-05T10:00:00.000Z',
+					customerEmail: 'client1@test.com',
+					driver: null,
+					region: { id: 'region_id_lviv', name: 'Lviv' },
+					selectedOptions: [{}]
+				},
+				{
+					id: 'clwvoqj5o000311a9g74h3z7r',
+					status: 'PENDING_MANUAL_CONFIRMATION',
+					price: '0.00',
+					trip_datetime: '2025-11-08T12:00:00.000Z',
+					customerEmail: 'client1@test.com',
+					driver: null,
+					region: { id: 'region_id_paris', name: 'Paris' },
+					selectedOptions: []
+				}
+			]
+		}
+	})
+	@ApiResponse({
+		status: 403,
+		description: 'Access denied.',
+		schema: {
+			example: {
+				statusCode: 403,
+				message: 'Forbidden resource',
+				error: 'Forbidden'
+			}
+		}
+	})
 	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
 	async findAll(@Query() dto: SearchOrderDto) {
 		return this.ordersService.findAll(dto)
@@ -96,6 +222,46 @@ export class OrdersController {
 
 	@Get(':id')
 	@ApiOperation({ summary: 'Get single order details by ID' })
+	@ApiResponse({
+		status: 200,
+		description: 'Detailed information for a single order.',
+		schema: {
+			example: {
+				id: 'clwvoqj5o000311a9g74h3z7r',
+				status: 'PENDING_MANUAL_CONFIRMATION',
+				price: '0.00',
+				trip_datetime: '2025-11-08T12:00:00.000Z',
+				passenger_count: 15,
+				luggage_standard: 15,
+				notes: 'Corporate group transfer to Disneyland.',
+				selectedOptions: [],
+				driver: null,
+				car: null
+			}
+		}
+	})
+	@ApiResponse({
+		status: 403,
+		description: 'Access denied.',
+		schema: {
+			example: {
+				statusCode: 403,
+				message: 'Forbidden resource',
+				error: 'Forbidden'
+			}
+		}
+	})
+	@ApiResponse({
+		status: 404,
+		description: 'Order not found.',
+		schema: {
+			example: {
+				statusCode: 404,
+				message: 'Order with ID ... not found.',
+				error: 'Not Found'
+			}
+		}
+	})
 	@Auth(UserRole.ADMIN)
 	async findOne(@Param('id') id: string) {
 		return this.ordersService.findOne(id)
@@ -131,7 +297,27 @@ export class OrdersController {
 
 	@Post('calculate-price')
 	@ApiOperation({ summary: 'Calculate trip price without creating an order' })
-	@ApiResponse({ status: 200, description: 'Price calculated successfully.' })
+	@ApiResponse({
+		status: 200,
+		description: 'Price calculated successfully.',
+		schema: { example: { price: 120.5 } }
+	})
+	@ApiResponse({
+		status: 400,
+		description: 'Bad request (e.g., tariff not found, invalid region).',
+		schema: {
+			example: {
+				statusCode: 400,
+				message: 'Fares for this route and car type are not available.',
+				error: 'Bad Request'
+			}
+		}
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Unauthorized access.',
+		schema: { example: { statusCode: 401, message: 'Unauthorized' } }
+	})
 	@Auth(UserRole.USER)
 	async calculatePrice(
 		@Body(new ValidationPipe()) createOrderDto: CreateOrderDto

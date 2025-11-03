@@ -11,7 +11,7 @@ import {
 	Post,
 	Req
 } from '@nestjs/common'
-import { ApiOperation, ApiTags } from '@nestjs/swagger'
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
 import type { Request } from 'express'
 import { EmailService } from 'src/email/email.service'
 import { CreateOrderDto } from 'src/orders/dto/create-order.dto'
@@ -38,6 +38,40 @@ export class PaymentController {
 
 	@Get('job/:jobId')
 	@ApiOperation({ summary: 'Check status of payment creation task' })
+	@ApiResponse({
+		status: 200,
+		description:
+			'Returns the status of the payment job from both cache (instant) and the queue (detailed).',
+		schema: {
+			example: {
+				cache: {
+					status: 'completed',
+					clientSecret: 'pi_3..._secret_...',
+					amount: 120.5
+				},
+				queue: {
+					id: 'your-job-id',
+					state: 'completed',
+					attempts: 1,
+					returnValue: {
+						status: 'completed',
+						clientSecret: 'pi_3..._secret_...',
+						amount: 120.5
+					}
+				}
+			}
+		}
+	})
+	@ApiResponse({
+		status: 404,
+		description: 'Job ID not found in cache or queue.',
+		schema: {
+			example: {
+				cache: null,
+				queue: null
+			}
+		}
+	})
 	async inspectJob(@Param('jobId') jobId: string) {
 		const cacheKey = `payment_job_${jobId}`
 		const cache = await this.cacheManager.get(cacheKey)
