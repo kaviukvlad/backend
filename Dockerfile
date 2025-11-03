@@ -1,32 +1,35 @@
-# --- Етап 1: Білдер (збираємо артефакти) ---
+# --- Stage: builder ---
 FROM node:18-alpine AS builder
 
 ENV PNPM_HOME="/root/.local/share/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 WORKDIR /app
 
+# Install pnpm
 RUN npm install -g pnpm
 
-# Встановлюємо залежності (включно з devDeps)
+# Copy package files and install all deps (including dev)
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install
 
-# Копіюємо код і будуємо
+# Copy source
 COPY . .
-RUN pnpm run build
 
-# Скомпілюємо seed.ts у dist/src, щоб seed.js був у dist
+# Generate prisma client (writes to node_modules/.prisma) BEFORE build so types exist
+RUN pnpm prisma generate
+
+# Build the project and compile seed.ts into dist/src
+RUN pnpm run build
 RUN pnpm exec tsc src/seed.ts --outDir dist/src --resolveJsonModule true --esModuleInterop true --module commonjs --target es2021
 
-# Залишаємо зібраний dist і prisma схему
-RUN mkdir -p /app/dist
-# якщо build створив ./dist — воно вже там; переконайтесь, що доступне у /app/dist
-# (див логи з Render для перевірки)
-# Копіюємо prisma схему (якщо потрібна)
-RUN rm -rf /app/prisma || true
-RUN if [ -d "prisma" ]; then cp -a prisma /app/prisma; fi
+# Prepare a stable copy of generated prisma runtime for copying to production
+RUN mkdir -p /app/.prisma || true
+RUN sh -c 'if [ -d "node_modules/.prisma" ]; then cp -a node_modules/.prisma /app/.prisma; elif [ -d "prisma/generated" ]; then mkdir -p /app/.prisma/client && cp -a prisma/generated/* /app/.prisma/client/; fi' || true
 
-# --- Етап 2: Прод (встановлюємо prod-залежності і генеруємо runtime тут) ---
+# Ensure /app/dist exists (build artifacts)
+RUN mkdir -p /app/dist || true
+
+# --- Stage: production ---
 FROM node:18-alpine AS production
 
 ENV NODE_ENV=production
@@ -36,22 +39,20 @@ WORKDIR /app
 
 RUN npm install -g pnpm
 
-# non-root user
+# Create non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup && chown -R appuser:appgroup /app
 USER appuser
 
-# Копіюємо package файли і ставимо production deps (повинні бути @prisma/client + prisma у dependencies)
+# Install only production deps
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod
 
-# Тепер згенеруємо Prisma client у production (створить node_modules/.prisma/client)
-RUN pnpm prisma generate
-
-# Копіюємо артефакти з білдера
+# Copy build artifacts and prisma/runtime prepared in builder
 COPY --chown=appuser:appgroup --from=builder /app/dist ./dist
 COPY --chown=appuser:appgroup --from=builder /app/prisma ./prisma
+COPY --chown=appuser:appgroup --from=builder /app/.prisma ./node_modules/.prisma
 
 EXPOSE 3000
 
-# Виконуємо міграції, seed, потім старт додатку
+# Run migrations, seed and start app
 CMD ["sh", "-c", "pnpm prisma migrate deploy && pnpm run prisma:seed:prod && node dist/main.js"]
