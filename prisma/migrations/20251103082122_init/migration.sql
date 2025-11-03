@@ -1,0 +1,480 @@
+-- CreateEnum
+CREATE TYPE "UserRole" AS ENUM ('USER', 'DRIVER', 'ADMIN', 'OPERATOR');
+
+-- CreateEnum
+CREATE TYPE "DocumentStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+
+-- CreateEnum
+CREATE TYPE "VehicleVerificationStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+
+-- CreateEnum
+CREATE TYPE "OrderStatus" AS ENUM ('NEW', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'PENDING_MANUAL_CONFIRMATION', 'ON_THE_WAY', 'ARRIVED', 'CLIENT_NO_SHOW');
+
+-- CreateEnum
+CREATE TYPE "RegionType" AS ENUM ('COUNTRY', 'CITY', 'AIRPORT', 'LOCATION');
+
+-- CreateEnum
+CREATE TYPE "MediaType" AS ENUM ('PHOTO', 'VIDEO');
+
+-- CreateEnum
+CREATE TYPE "DocumentType" AS ENUM ('DRIVERS_LICENSE', 'VEHICLE_REGISTRATION', 'SELFIE_WITH_LICENSE');
+
+-- CreateTable
+CREATE TABLE "User" (
+    "id" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
+    "phone" TEXT,
+    "role" "UserRole" NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "OperatorProfile" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "name" TEXT,
+
+    CONSTRAINT "OperatorProfile_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "DriverProfile" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "name" TEXT,
+    "regionId" TEXT,
+    "rating" DOUBLE PRECISION NOT NULL DEFAULT 5.0,
+    "status" INTEGER NOT NULL DEFAULT 0,
+    "commissionPercent" DECIMAL(5,2),
+
+    CONSTRAINT "DriverProfile_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AdminProfile" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "name" TEXT,
+
+    CONSTRAINT "AdminProfile_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ClientProfile" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "name" TEXT,
+
+    CONSTRAINT "ClientProfile_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Car" (
+    "id" TEXT NOT NULL,
+    "driverId" TEXT NOT NULL,
+    "vehicle_type_id" TEXT NOT NULL,
+    "brand" TEXT NOT NULL,
+    "model" TEXT NOT NULL,
+    "year" INTEGER NOT NULL,
+    "color" TEXT,
+    "license_plate" TEXT NOT NULL,
+    "verification_status" "VehicleVerificationStatus" NOT NULL DEFAULT 'PENDING',
+
+    CONSTRAINT "Car_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "VehicleMedia" (
+    "id" TEXT NOT NULL,
+    "carId" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "type" "MediaType" NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "VehicleMedia_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Order" (
+    "id" TEXT NOT NULL,
+    "clientId" TEXT,
+    "paymentIntentId" TEXT,
+    "customerEmail" TEXT,
+    "regionId" TEXT,
+    "driverId" TEXT,
+    "car_id" TEXT,
+    "vehicleTypeId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "luggage_standard" INTEGER NOT NULL DEFAULT 0,
+    "luggage_small" INTEGER NOT NULL DEFAULT 0,
+    "name" TEXT,
+    "routeWaypoints" JSONB NOT NULL,
+    "distanceInKm" DOUBLE PRECISION,
+    "durationInMinutes" INTEGER,
+    "price" DECIMAL(10,2) NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'EUR',
+    "status" "OrderStatus" NOT NULL DEFAULT 'NEW',
+    "trip_datetime" TIMESTAMP(3) NOT NULL,
+    "notes" TEXT,
+    "passenger_count" INTEGER NOT NULL,
+    "flight_number" TEXT,
+    "partnerId" TEXT,
+
+    CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Rating" (
+    "id" TEXT NOT NULL,
+    "order_id" TEXT NOT NULL,
+    "driverId" TEXT NOT NULL,
+    "clientId" TEXT NOT NULL,
+    "score" INTEGER NOT NULL,
+    "comment" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Rating_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Document" (
+    "id" TEXT NOT NULL,
+    "driverId" TEXT NOT NULL,
+    "type" "DocumentType" NOT NULL,
+    "file_url" TEXT NOT NULL,
+    "status" "DocumentStatus" NOT NULL DEFAULT 'PENDING',
+    "expires_at" TIMESTAMP(3),
+
+    CONSTRAINT "Document_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AuditLog" (
+    "id" TEXT NOT NULL,
+    "adminId" TEXT NOT NULL,
+    "action" TEXT NOT NULL,
+    "target_entity" TEXT,
+    "target_id" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Region" (
+    "id" TEXT NOT NULL,
+    "parent_id" TEXT,
+    "name" TEXT NOT NULL,
+    "type" "RegionType" NOT NULL,
+    "latitude" DOUBLE PRECISION,
+    "longitude" DOUBLE PRECISION,
+    "radiusKm" INTEGER,
+
+    CONSTRAINT "Region_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "VehicleType" (
+    "id" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "max_passengers" INTEGER NOT NULL,
+    "max_luggage_standard" INTEGER NOT NULL,
+    "max_luggage_small" INTEGER NOT NULL,
+
+    CONSTRAINT "VehicleType_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "VehicleTypeTranslation" (
+    "id" TEXT NOT NULL,
+    "vehicle_type_id" TEXT NOT NULL,
+    "locale" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+
+    CONSTRAINT "VehicleTypeTranslation_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RegionTranslation" (
+    "id" TEXT NOT NULL,
+    "region_id" TEXT NOT NULL,
+    "locale" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+
+    CONSTRAINT "RegionTranslation_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Partner" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "apiKey" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "markupPercent" DECIMAL(5,2) NOT NULL DEFAULT 0.0,
+    "contactEmail" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Partner_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ApiLog" (
+    "id" TEXT NOT NULL,
+    "partnerId" TEXT NOT NULL,
+    "requestTimestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "requestMethod" TEXT NOT NULL,
+    "requestUrl" TEXT NOT NULL,
+    "requestBody" JSONB,
+    "responseStatusCode" INTEGER NOT NULL,
+    "responseBody" JSONB,
+    "ipAddress" TEXT,
+
+    CONSTRAINT "ApiLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "OrderOption" (
+    "id" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "price" DECIMAL(10,2) NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "OrderOption_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "OrderToOption" (
+    "orderId" TEXT NOT NULL,
+    "optionId" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "priceAtTimeOfOrder" DECIMAL(10,2) NOT NULL,
+
+    CONSTRAINT "OrderToOption_pkey" PRIMARY KEY ("orderId","optionId")
+);
+
+-- CreateTable
+CREATE TABLE "Tariff" (
+    "id" TEXT NOT NULL,
+    "regionId" TEXT NOT NULL,
+    "vehicleTypeId" TEXT NOT NULL,
+    "baseFare" DECIMAL(10,2) NOT NULL,
+    "pricePerKm" DECIMAL(10,2) NOT NULL,
+    "pricePerMinute" DECIMAL(10,2) NOT NULL DEFAULT 0,
+    "minimumFare" DECIMAL(10,2) NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Tariff_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PricingSetting" (
+    "id" TEXT NOT NULL,
+    "key" TEXT NOT NULL,
+    "value" DECIMAL(10,2) NOT NULL,
+    "description" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PricingSetting_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "OrderNoShowProof" (
+    "id" TEXT NOT NULL,
+    "orderId" TEXT NOT NULL,
+    "imageUrl" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "OrderNoShowProof_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RatingToken" (
+    "id" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "orderId" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "isUsed" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "RatingToken_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "_DriverVehicleTypes" (
+    "A" TEXT NOT NULL,
+    "B" TEXT NOT NULL,
+
+    CONSTRAINT "_DriverVehicleTypes_AB_pkey" PRIMARY KEY ("A","B")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_phone_key" ON "User"("phone");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "OperatorProfile_userId_key" ON "OperatorProfile"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "DriverProfile_userId_key" ON "DriverProfile"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AdminProfile_userId_key" ON "AdminProfile"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ClientProfile_userId_key" ON "ClientProfile"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Car_license_plate_key" ON "Car"("license_plate");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Order_paymentIntentId_key" ON "Order"("paymentIntentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Rating_order_id_key" ON "Rating"("order_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Document_driverId_type_key" ON "Document"("driverId", "type");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "VehicleType_code_key" ON "VehicleType"("code");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "VehicleTypeTranslation_vehicle_type_id_locale_key" ON "VehicleTypeTranslation"("vehicle_type_id", "locale");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RegionTranslation_region_id_locale_key" ON "RegionTranslation"("region_id", "locale");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Partner_name_key" ON "Partner"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Partner_apiKey_key" ON "Partner"("apiKey");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "OrderOption_code_key" ON "OrderOption"("code");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Tariff_regionId_vehicleTypeId_key" ON "Tariff"("regionId", "vehicleTypeId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PricingSetting_key_key" ON "PricingSetting"("key");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "OrderNoShowProof_orderId_key" ON "OrderNoShowProof"("orderId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RatingToken_token_key" ON "RatingToken"("token");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RatingToken_orderId_key" ON "RatingToken"("orderId");
+
+-- CreateIndex
+CREATE INDEX "_DriverVehicleTypes_B_index" ON "_DriverVehicleTypes"("B");
+
+-- AddForeignKey
+ALTER TABLE "OperatorProfile" ADD CONSTRAINT "OperatorProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "DriverProfile" ADD CONSTRAINT "DriverProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "DriverProfile" ADD CONSTRAINT "DriverProfile_regionId_fkey" FOREIGN KEY ("regionId") REFERENCES "Region"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AdminProfile" ADD CONSTRAINT "AdminProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ClientProfile" ADD CONSTRAINT "ClientProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Car" ADD CONSTRAINT "Car_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "DriverProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Car" ADD CONSTRAINT "Car_vehicle_type_id_fkey" FOREIGN KEY ("vehicle_type_id") REFERENCES "VehicleType"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VehicleMedia" ADD CONSTRAINT "VehicleMedia_carId_fkey" FOREIGN KEY ("carId") REFERENCES "Car"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Order" ADD CONSTRAINT "Order_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "ClientProfile"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Order" ADD CONSTRAINT "Order_regionId_fkey" FOREIGN KEY ("regionId") REFERENCES "Region"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Order" ADD CONSTRAINT "Order_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "DriverProfile"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Order" ADD CONSTRAINT "Order_car_id_fkey" FOREIGN KEY ("car_id") REFERENCES "Car"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Order" ADD CONSTRAINT "Order_vehicleTypeId_fkey" FOREIGN KEY ("vehicleTypeId") REFERENCES "VehicleType"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Order" ADD CONSTRAINT "Order_partnerId_fkey" FOREIGN KEY ("partnerId") REFERENCES "Partner"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Rating" ADD CONSTRAINT "Rating_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "Order"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Rating" ADD CONSTRAINT "Rating_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "DriverProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Rating" ADD CONSTRAINT "Rating_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "ClientProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Document" ADD CONSTRAINT "Document_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "DriverProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_adminId_fkey" FOREIGN KEY ("adminId") REFERENCES "AdminProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Region" ADD CONSTRAINT "Region_parent_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "Region"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VehicleTypeTranslation" ADD CONSTRAINT "VehicleTypeTranslation_vehicle_type_id_fkey" FOREIGN KEY ("vehicle_type_id") REFERENCES "VehicleType"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RegionTranslation" ADD CONSTRAINT "RegionTranslation_region_id_fkey" FOREIGN KEY ("region_id") REFERENCES "Region"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ApiLog" ADD CONSTRAINT "ApiLog_partnerId_fkey" FOREIGN KEY ("partnerId") REFERENCES "Partner"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OrderToOption" ADD CONSTRAINT "OrderToOption_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OrderToOption" ADD CONSTRAINT "OrderToOption_optionId_fkey" FOREIGN KEY ("optionId") REFERENCES "OrderOption"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Tariff" ADD CONSTRAINT "Tariff_regionId_fkey" FOREIGN KEY ("regionId") REFERENCES "Region"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Tariff" ADD CONSTRAINT "Tariff_vehicleTypeId_fkey" FOREIGN KEY ("vehicleTypeId") REFERENCES "VehicleType"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OrderNoShowProof" ADD CONSTRAINT "OrderNoShowProof_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RatingToken" ADD CONSTRAINT "RatingToken_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "_DriverVehicleTypes" ADD CONSTRAINT "_DriverVehicleTypes_A_fkey" FOREIGN KEY ("A") REFERENCES "DriverProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "_DriverVehicleTypes" ADD CONSTRAINT "_DriverVehicleTypes_B_fkey" FOREIGN KEY ("B") REFERENCES "VehicleType"("id") ON DELETE CASCADE ON UPDATE CASCADE;
