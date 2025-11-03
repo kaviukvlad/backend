@@ -1,5 +1,5 @@
-import type { DriverProfile, User } from '@/../prisma/generated/client'
 import { createParamDecorator, ExecutionContext } from '@nestjs/common'
+import type { DriverProfile, User } from '@prisma/client'
 
 type UserWithDriverProfile = User & { driverProfile: DriverProfile }
 

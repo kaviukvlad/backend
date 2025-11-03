@@ -1,5 +1,5 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common'
-import type { ClientProfile } from 'prisma/generated/client'
+import type { ClientProfile } from '@prisma/client'
 
 export const CurrentClient = createParamDecorator(
 	(data: keyof ClientProfile, ctx: ExecutionContext) => {

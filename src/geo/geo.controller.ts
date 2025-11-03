@@ -8,7 +8,7 @@ import {
 } from '@nestjs/swagger'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 
-import { UserRole } from 'prisma/generated/client'
+import { UserRole } from '@prisma/client'
 import { GeoService } from './geo.service'
 
 @ApiTags('Geo')

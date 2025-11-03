@@ -5,9 +5,9 @@ import {
 	Injectable,
 	NotFoundException
 } from '@nestjs/common'
+import { OrderOption, Partner, Prisma } from '@prisma/client'
 import type { Queue } from 'bull'
 import { randomUUID } from 'crypto'
-import { OrderOption, Partner, Prisma } from 'prisma/generated/client'
 import { GeoService } from 'src/geo/geo.service'
 import { NotificationsService } from 'src/notifications/notifications.service'
 import { CREATE_PAYMENT_JOB, PAYMENT_QUEUE } from 'src/payment/constants'

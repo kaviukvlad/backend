@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
+import { RegionType } from '@prisma/client'
 import {
 	IsEnum,
 	IsNotEmpty,
@@ -7,7 +8,6 @@ import {
 	IsString,
 	Min
 } from 'class-validator'
-import { RegionType } from 'prisma/generated/client'
 
 export class CreateRegionDto {
 	@ApiProperty({

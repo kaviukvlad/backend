@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { Order } from 'prisma/generated/client'
+import { Order } from '@prisma/client'
 import { TelegramService } from 'src/telegram/telegram.service'
 
 @Injectable()

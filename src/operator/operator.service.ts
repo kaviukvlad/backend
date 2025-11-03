@@ -4,8 +4,8 @@ import {
 	NotFoundException,
 	UnauthorizedException
 } from '@nestjs/common'
+import { User } from '@prisma/client'
 import { verify } from 'argon2'
-import { User } from 'prisma/generated/client'
 import { PaymentService } from 'src/payment/payment.service'
 import { PrismaService } from 'src/prisma.service'
 import { AssignOrderDto } from './dto/assign-order.dto'

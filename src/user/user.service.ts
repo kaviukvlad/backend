@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
+import { UserRole } from '@prisma/client'
 import { hash } from 'argon2'
-import { UserRole } from 'prisma/generated/client'
 import { RegisterDto } from 'src/auth/dto/register.dto'
 import { PrismaService } from 'src/prisma.service'
 

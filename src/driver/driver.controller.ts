@@ -25,9 +25,9 @@ import {
 	ApiParam,
 	ApiTags
 } from '@nestjs/swagger'
+import { UserRole, type DriverProfile } from '@prisma/client'
 import { diskStorage } from 'multer'
 import { extname } from 'path'
-import { UserRole, type DriverProfile } from 'prisma/generated/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { CurrentDriver } from 'src/auth/decorators/driver.decorators'
 import { CreateCarDto } from 'src/car/dto/create-car.dto'

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common'
-import { Partner } from 'prisma/generated/client'
+import { Partner } from '@prisma/client'
 import { GeoService } from 'src/geo/geo.service'
 import { CreateOrderDto } from 'src/orders/dto/create-order.dto'
 import { PrismaService } from 'src/prisma.service'

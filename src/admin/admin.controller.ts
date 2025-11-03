@@ -14,7 +14,7 @@ import {
 	ApiResponse,
 	ApiTags
 } from '@nestjs/swagger'
-import { UserRole } from 'prisma/generated/client'
+import { UserRole } from '@prisma/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { AdminService } from './admin.service'
 import { CreateOperatorDto } from './dto/create-operator.dto'

@@ -1,5 +1,6 @@
 // file: src/orders/dto/search-order.dto.ts
 
+import { OrderStatus } from '@prisma/client'
 import { Transform } from 'class-transformer'
 import {
 	IsArray,
@@ -8,7 +9,6 @@ import {
 	IsOptional,
 	IsString
 } from 'class-validator'
-import { OrderStatus } from 'prisma/generated/client'
 
 export class SearchOrderDto {
 	@IsOptional()

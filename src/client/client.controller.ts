@@ -7,7 +7,7 @@ import {
 	HttpStatus,
 	Patch
 } from '@nestjs/common'
-import { UserRole } from 'prisma/generated/client'
+import { UserRole } from '@prisma/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 
 import {

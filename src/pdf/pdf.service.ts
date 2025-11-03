@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
+import { Order } from '@prisma/client'
 import { I18nService } from 'nestjs-i18n'
-import { Order } from 'prisma/generated/client'
 import * as puppeteer from 'puppeteer'
 
 @Injectable()

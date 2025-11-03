@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger'
+import { VehicleVerificationStatus } from '@prisma/client'
 import { IsEnum, IsNotEmpty } from 'class-validator'
-import { VehicleVerificationStatus } from 'prisma/generated/client'
 
 export class UpdateCarStatusDto {
 	@ApiProperty({

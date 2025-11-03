@@ -1,5 +1,5 @@
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger'
-import { RegionType } from 'prisma/generated/client'
+import { RegionType } from '@prisma/client'
 
 export class RegionResponseDto {
 	@ApiProperty()

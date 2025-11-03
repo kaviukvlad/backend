@@ -17,7 +17,7 @@ import {
 	ApiTags,
 	getSchemaPath
 } from '@nestjs/swagger'
-import { UserRole } from 'prisma/generated/client'
+import { UserRole } from '@prisma/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { CreateRegionDto } from './dto/create-region.dto'
 import { RegionResponseDto } from './dto/region-response.dto'

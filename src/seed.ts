@@ -1,5 +1,5 @@
+import { PrismaClient } from '@prisma/client'
 import { hash } from 'argon2'
-import { PrismaClient } from '../prisma/generated/client'
 
 const prisma = new PrismaClient()
 

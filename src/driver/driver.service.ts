@@ -5,12 +5,7 @@ import {
 	NotFoundException
 } from '@nestjs/common'
 
-import {
-	DocumentType,
-	MediaType,
-	OrderStatus,
-	Prisma
-} from 'prisma/generated/client'
+import { DocumentType, MediaType, OrderStatus, Prisma } from '@prisma/client'
 import { CreateCarDto } from 'src/car/dto/create-car.dto'
 import { UpdateCarDto } from 'src/car/dto/update-car.dto'
 import { NotificationsService } from 'src/notifications/notifications.service'

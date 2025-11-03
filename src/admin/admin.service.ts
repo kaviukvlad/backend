@@ -3,11 +3,8 @@ import {
 	Injectable,
 	NotFoundException
 } from '@nestjs/common'
+import { DocumentStatus, VehicleVerificationStatus } from '@prisma/client'
 import { hash } from 'argon2'
-import {
-	DocumentStatus,
-	VehicleVerificationStatus
-} from 'prisma/generated/client'
 import { PrismaService } from 'src/prisma.service'
 import { CreateOperatorDto } from './dto/create-operator.dto'
 import { CreateTariffDto } from './dto/create-tariff.dto'

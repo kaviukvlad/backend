@@ -15,7 +15,7 @@ import {
 	ApiResponse,
 	ApiTags
 } from '@nestjs/swagger'
-import { UserRole } from 'prisma/generated/client'
+import { UserRole } from '@prisma/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { CreateOrderOptionDto } from './dto/create-option.dto'
 import { OrderOptionsService } from './order-options.service'

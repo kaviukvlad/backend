@@ -15,7 +15,7 @@ import {
 	ApiResponse,
 	ApiTags
 } from '@nestjs/swagger'
-import { UserRole } from 'prisma/generated/client'
+import { UserRole } from '@prisma/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { CurrentClient } from 'src/auth/decorators/client.decorators'
 import { PricingService } from 'src/pricing/pricing.service'

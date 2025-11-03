@@ -6,7 +6,7 @@ import {
 	ApiResponse,
 	ApiTags
 } from '@nestjs/swagger'
-import { UserRole } from 'prisma/generated/client'
+import { UserRole } from '@prisma/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { Locale } from 'src/auth/decorators/locale.decorator'
 import { CreateVehicleTypeDto } from './dto/create-vehicle-type.dto'

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { Order } from '@prisma/client'
 import * as nodemailer from 'nodemailer'
-import { Order } from 'prisma/generated/client'
 
 @Injectable()
 export class EmailService {
