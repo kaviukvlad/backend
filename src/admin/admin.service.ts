@@ -6,6 +6,7 @@ import {
 import { DocumentStatus, VehicleVerificationStatus } from '@prisma/client'
 import { hash } from 'argon2'
 import { PrismaService } from 'src/prisma.service'
+import { CreateBreakpointDto } from './dto/create-breakpoint.dto'
 import { CreateOperatorDto } from './dto/create-operator.dto'
 import { CreateTariffDto } from './dto/create-tariff.dto'
 import { UpdateDriverCommissionDto } from './dto/update-driver-commission.dto'
@@ -271,6 +272,31 @@ export class AdminService {
 			const { password, ...userResult } = newUser
 
 			return { user: userResult, driverProfileId: driverProfile.id }
+		})
+	}
+
+	async getBreakpoints(regionId: string) {
+		return this.prisma.distanceBreakpoint.findMany({
+			where: { regionId },
+			orderBy: {
+				distanceKm: 'asc'
+			}
+		})
+	}
+
+	async createBreakpoint(regionId: string, dto: CreateBreakpointDto) {
+		return this.prisma.distanceBreakpoint.create({
+			data: {
+				regionId: regionId,
+				distanceKm: dto.distanceKm,
+				coefficient: dto.coefficient
+			}
+		})
+	}
+
+	async deleteBreakpoint(id: string) {
+		return this.prisma.distanceBreakpoint.delete({
+			where: { id }
 		})
 	}
 }

@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger'
 import { UserRole } from '@prisma/client'
 import {
+	IsBoolean,
 	IsEmail,
 	IsEnum,
 	IsNotEmpty,
@@ -62,4 +63,8 @@ export class RegisterDto {
 	@IsString()
 	@IsNotEmpty()
 	regionId?: string
+
+	@IsBoolean()
+	@IsOptional()
+	isSubscribedToNewsletter?: boolean
 }

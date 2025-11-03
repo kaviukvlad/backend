@@ -115,6 +115,8 @@ model ClientProfile {
 
   name String?
 
+  isSubscribedToNewsletter Boolean @default(false)
+
   orders  Order[]
   ratings Rating[]
 }
@@ -240,6 +242,8 @@ model Region {
   translations RegionTranslation[]
   orders       Order[]
   tariffs      Tariff[]
+
+  breakpoints DistanceBreakpoint[]
 }
 
 model VehicleType {
@@ -374,4 +378,19 @@ model RatingToken {
   expiresAt DateTime
   isUsed    Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model DistanceBreakpoint {
+  id       String @id @default(cuid())
+  region   Region @relation(fields: [regionId], references: [id])
+  regionId String
+
+  distanceKm Int
+
+  coefficient Decimal @db.Decimal(5, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([regionId, distanceKm])
 }

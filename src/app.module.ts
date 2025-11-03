@@ -1,9 +1,8 @@
 import { CacheModule } from '@nestjs/cache-manager'
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
-import { APP_GUARD } from '@nestjs/core'
 import { ScheduleModule } from '@nestjs/schedule'
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
+import { ThrottlerModule } from '@nestjs/throttler'
 import * as redisStore from 'cache-manager-redis-store'
 import { AcceptLanguageResolver, I18nJsonLoader, I18nModule } from 'nestjs-i18n'
 import * as path from 'path'
@@ -15,6 +14,7 @@ import { CommissionModule } from './commission/commission.module'
 import { DriverModule } from './driver/driver.module'
 import { EmailModule } from './email/email.module'
 import { GeoModule } from './geo/geo.module'
+import { NewsletterModule } from './newsletter/newsletter.module'
 import { NotificationsModule } from './notifications/notifications.module'
 import { OperatorModule } from './operator/operator.module'
 import { OrderOptionsModule } from './order-options/order-options.module'
@@ -82,13 +82,14 @@ import { VehicleTypeModule } from './vehicle-type/vehicle-type.module'
 		OperatorModule,
 		TasksModule,
 		RatingModule,
-		TelegramModule
+		TelegramModule,
+		NewsletterModule
 	],
 	providers: [
-		{
+		/*{
 			provide: APP_GUARD,
 			useClass: ThrottlerGuard
-		}
+		}*/
 	]
 })
 export class AppModule {}

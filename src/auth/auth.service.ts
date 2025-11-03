@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt'
 import { verify } from 'argon2'
 import { Response } from 'express'
+import { NewsletterService } from 'src/newsletter/newsletter.service'
 import { UserService } from 'src/user/user.service'
 import { LoginDto } from './dto/login.dto'
 import { RegisterDto } from './dto/register.dto'
@@ -18,7 +19,8 @@ export class AuthService {
 
 	constructor(
 		private jwt: JwtService,
-		private userService: UserService
+		private userService: UserService,
+		private newsletterService: NewsletterService
 	) {}
 
 	async login(dto: LoginDto) {
@@ -37,6 +39,12 @@ export class AuthService {
 		if (oldUser) throw new BadRequestException('User already exists')
 
 		const { password, ...user } = await this.userService.create(dto)
+
+		if (dto.isSubscribedToNewsletter) {
+			this.newsletterService.subscribe(dto.email).catch(err => {
+				console.error('Failed to subscribe to newsletter in background:', err)
+			})
+		}
 
 		const tokens = await this.issueTokens(user.id)
 		return {

@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Param,
 	Patch,
@@ -17,6 +18,7 @@ import {
 import { UserRole } from '@prisma/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { AdminService } from './admin.service'
+import { CreateBreakpointDto } from './dto/create-breakpoint.dto'
 import { CreateOperatorDto } from './dto/create-operator.dto'
 import { CreateTariffDto } from './dto/create-tariff.dto'
 import { UpdateCarStatusDto } from './dto/update-car-status.dto'
@@ -157,5 +159,28 @@ export class AdminController {
 	@ApiOperation({ summary: 'Create a new operator user' })
 	createOperator(@Body() dto: CreateOperatorDto) {
 		return this.adminService.createOperator(dto)
+	}
+
+	@Get('regions/:regionId/breakpoints')
+	@ApiOperation({ summary: 'Get all breakpoints for the region' })
+	getBreakpoints(@Param('regionId') regionId: string) {
+		return this.adminService.getBreakpoints(regionId)
+	}
+
+	@Post('regions/:regionId/breakpoints')
+	@ApiOperation({ summary: 'Create new breakpoint (passworded)' })
+	@Auth(UserRole.ADMIN)
+	createBreakpoint(
+		@Param('regionId') regionId: string,
+		@Body() dto: CreateBreakpointDto
+	) {
+		return this.adminService.createBreakpoint(regionId, dto)
+	}
+
+	@Delete('breakpoints/:id')
+	@ApiOperation({ summary: 'Delete breakpoint (passworded)' })
+	@Auth(UserRole.ADMIN)
+	deleteBreakpoint(@Param('id') id: string) {
+		return this.adminService.deleteBreakpoint(id)
 	}
 }

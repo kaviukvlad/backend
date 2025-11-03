@@ -52,7 +52,13 @@ export class UserService {
 						: undefined,
 				clientProfile:
 					dto.role === UserRole.USER
-						? { create: { name: dto.name } }
+						? {
+								create: {
+									name: dto.name,
+									isSubscribedToNewsletter:
+										dto.isSubscribedToNewsletter ?? false
+								}
+							}
 						: undefined
 			}
 		})
