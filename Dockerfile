@@ -55,4 +55,4 @@ COPY --chown=appuser:appgroup --from=builder /app/.prisma ./node_modules/.prisma
 EXPOSE 3000
 
 # Run migrations, seed and start app
-CMD ["sh", "-c", "pnpm prisma migrate deploy && pnpm run prisma:seed:prod && node dist/main.js"]
+CMD ["sh", "-c", "pnpm prisma migrate deploy && node dist/main.js"]
