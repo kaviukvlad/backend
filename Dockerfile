@@ -5,13 +5,15 @@ RUN npm install -g pnpm
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-
 RUN pnpm install
 
 COPY . .
 
 RUN pnpm prisma generate
 RUN pnpm run build
+
+
+RUN pnpm exec tsc src/seed.ts --outDir dist/src --resolveJsonModule true --esModuleInterop true --module commonjs --target es2021
 
 
 FROM node:18-alpine AS production
@@ -23,26 +25,13 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup && chown -R appuser:a
 USER appuser
 
 COPY package.json pnpm-lock.yaml ./
-
 RUN pnpm install --prod
 
 
 COPY --chown=appuser:appgroup --from=builder /app/dist ./dist
 COPY --chown=appuser:appgroup --from=builder /app/prisma ./prisma
 
-
-COPY --chown=appuser:appgroup --from=builder /app/src/seed.ts ./src/seed.ts
-COPY --chown=appuser:appgroup --from=builder /app/tsconfig.json ./tsconfig.json
-
-
-COPY --chown=appuser:appgroup --from=builder /app/node_modules/ts-node ./node_modules/ts-node
-COPY --chown=appuser:appgroup --from=builder /app/node_modules/typescript ./node_modules/typescript
-
-
-COPY --chown=appuser:appgroup --from=builder /app/node_modules/tsconfig-paths ./node_modules/tsconfig-paths
-COPY --chown=appuser:appgroup --from=builder /app/node_modules/@types/node ./node_modules/@types/node
-
-
 EXPOSE 3000
+
 
 CMD ["sh", "-c", "pnpm prisma migrate deploy && pnpm run prisma:seed:prod && node dist/main.js"]
