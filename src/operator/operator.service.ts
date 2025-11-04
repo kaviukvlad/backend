@@ -22,7 +22,7 @@ export class OperatorService {
 		const order = await this.prisma.order.findUnique({ where: { id: orderId } })
 		if (
 			!order ||
-			!['NEW', 'PENDING_MANUAL_CONFIRMATION'].includes(order.status)
+			!['NEW', 'PENDING_MANUAL_CONFIRMATION', 'ACCEPTED'].includes(order.status)
 		) {
 			throw new NotFoundException('Order not found or cannot be assigned.')
 		}
