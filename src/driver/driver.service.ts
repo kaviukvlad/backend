@@ -205,18 +205,30 @@ export class DriverService {
 		return this.prisma.$transaction(async tx => {
 			const driverProfile = await tx.driverProfile.findUnique({
 				where: { id: driverId },
-				include: { cars: true }
+				include: {
+					cars: true,
+					user: {
+						select: {
+							role: true
+						}
+					}
+				}
 			})
 
 			if (!driverProfile || driverProfile.status !== 1) {
 				throw new ForbiddenException('Your profile is not approved.')
 			}
+			const isOperator = driverProfile.user.role === 'OPERATOR'
+			let carToAssignId: string | null = null
 
-			const approvedCar = driverProfile.cars.find(
-				car => car.verification_status === 'APPROVED'
-			)
-			if (!approvedCar) {
-				throw new ForbiddenException('You have no approved cars.')
+			if (!isOperator) {
+				const approvedCar = driverProfile.cars.find(
+					car => car.verification_status === 'APPROVED'
+				)
+				if (!approvedCar) {
+					throw new ForbiddenException('You have no approved cars.')
+				}
+				carToAssignId = approvedCar.id
 			}
 
 			const order = await tx.order.findUnique({
@@ -231,7 +243,7 @@ export class DriverService {
 				data: {
 					status: 'ACCEPTED',
 					driver: { connect: { id: driverId } },
-					car: { connect: { id: approvedCar.id } }
+					car: carToAssignId ? { connect: { id: carToAssignId } } : undefined
 				}
 			})
 		})
@@ -328,7 +340,10 @@ export class DriverService {
 				'Your profile has not yet been approved by the administrator.'
 			)
 		}
-		if (driverProfile.cars.length === 0) {
+
+		const isOperator = driverProfile.user.role === 'OPERATOR'
+
+		if (driverProfile.cars.length === 0 && !isOperator) {
 			throw new ForbiddenException(
 				'You have no approved cars to accept orders.'
 			)
@@ -349,25 +364,24 @@ export class DriverService {
 			}
 		})
 
-		const isOperator = driverProfile.user.role === 'OPERATOR'
-
 		const suitableOrders = ordersInRegion.filter(order => {
-			const luggageFits = driverProfile.cars.some(
-				car =>
-					car.vehicle_type.max_luggage_standard >=
-						(order.luggage_standard || 0) &&
-					car.vehicle_type.max_luggage_small >= (order.luggage_small || 0)
-			)
+			const luggageFits =
+				driverProfile.cars.some(
+					car =>
+						car.vehicle_type.max_luggage_standard >=
+							(order.luggage_standard || 0) &&
+						car.vehicle_type.max_luggage_small >= (order.luggage_small || 0)
+				) || isOperator
 			if (!luggageFits) return false
 
 			if (isOperator) {
 				return true
 			}
 
-			const allowedVehicleTypeIds = driverProfile.allowedVehicleTypes.map.call(
+			const allowedVehicleTypeIds = driverProfile.allowedVehicleTypes.map(
 				vt => vt.id
 			)
-			return allowedVehicleTypeIds.include(order.vehicleTypeId)
+			return allowedVehicleTypeIds.includes(order.vehicleTypeId)
 		})
 
 		const ordersWithEarnings = await Promise.all(
@@ -401,7 +415,7 @@ export class DriverService {
 			where: {
 				driverId,
 				status: {
-					in: ['ACCEPTED', 'IN_PROGRESS']
+					in: ['ACCEPTED', 'IN_PROGRESS', 'ON_THE_WAY', 'ARRIVED']
 				}
 			},
 			orderBy: {
@@ -424,7 +438,7 @@ export class DriverService {
 		const orders = await this.prisma.order.findMany({
 			where: {
 				driverId,
-				status: 'COMPLETED'
+				status: { in: ['CANCELLED', 'CLIENT_NO_SHOW'] }
 			},
 			orderBy: {
 				trip_datetime: 'desc'
@@ -445,8 +459,10 @@ export class DriverService {
 	async startOrder(driverId: string, orderId: string) {
 		const order = await this.verifyOrderOwnership(driverId, orderId)
 
-		if (order.status !== 'ACCEPTED') {
-			throw new BadRequestException('You can only start an accepted order.')
+		if (order.status !== 'ARRIVED') {
+			throw new BadRequestException(
+				"You can only start a trip after arriving ('ARRIVED'). Use 'on-the-way' and 'arrived' first."
+			)
 		}
 
 		return this.prisma.order.update({
@@ -513,7 +529,8 @@ export class DriverService {
 
 		const allowedTransitions = {
 			ACCEPTED: ['ON_THE_WAY'],
-			ON_THE_WAY: ['ARRIVED']
+			ON_THE_WAY: ['ARRIVED'],
+			ARRIVED: ['IN_PROGRESS']
 		}
 
 		if (!allowedTransitions[order.status]?.includes(status)) {
