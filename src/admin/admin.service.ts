@@ -23,7 +23,13 @@ export class AdminService {
 				email: true,
 				role: true,
 				createdAt: true,
-				driverProfile: true,
+				driverProfile: {
+					select: {
+						id: true,
+						name: true,
+						status: true
+					}
+				},
 				clientProfile: true,
 				adminProfile: true
 			}
