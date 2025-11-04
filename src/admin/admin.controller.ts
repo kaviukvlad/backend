@@ -382,7 +382,6 @@ export class AdminController {
 			]
 		}
 	})
-	// Note: No @Auth() guard on this specific endpoint in your provided code
 	getBreakpoints(@Param('regionId') regionId: string) {
 		return this.adminService.getBreakpoints(regionId)
 	}

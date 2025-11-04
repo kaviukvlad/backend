@@ -370,7 +370,6 @@ export class DriverController {
 		@CurrentDriver('id') driverId: string,
 		@Param('id') orderId: string
 	) {
-		// TODO: Add @ApiResponse for 400 Bad Request if status is not 'ACCEPTED'
 		return this.driverService.startOrder(driverId, orderId)
 	}
 
@@ -383,7 +382,6 @@ export class DriverController {
 		@CurrentDriver('id') driverId: string,
 		@Param('id') orderId: string
 	) {
-		// TODO: Add @ApiResponse for 400 Bad Request if status is not 'IN_PROGRESS'
 		return this.driverService.completeOrder(driverId, orderId)
 	}
 

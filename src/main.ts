@@ -1,3 +1,4 @@
+import { ValidationPipe } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { NestExpressApplication } from '@nestjs/platform-express'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
@@ -35,6 +36,16 @@ async function bootstrap() {
 		credentials: true,
 		exposedHeaders: 'set-cookie'
 	})
+
+	app.useGlobalPipes(
+		new ValidationPipe({
+			whitelist: true,
+			transform: true,
+			transformOptions: {
+				enableImplicitConversion: true
+			}
+		})
+	)
 
 	app.useStaticAssets(join(__dirname, '..', 'uploads'), {
 		prefix: '/uploads/'

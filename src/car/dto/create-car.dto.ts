@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
+import { Type } from 'class-transformer'
 import {
 	IsInt,
 	IsNotEmpty,
@@ -30,6 +31,7 @@ export class CreateCarDto {
 		example: 2021,
 		minimum: 1990
 	})
+	@Type(() => Number)
 	@IsInt()
 	@Min(1990)
 	@Max(new Date().getFullYear())
