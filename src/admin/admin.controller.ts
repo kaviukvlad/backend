@@ -74,7 +74,7 @@ export class AdminController {
 			}
 		}
 	})
-	@Auth(UserRole.ADMIN)
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
 	async getAllUser() {
 		return this.adminService.getAllUsers()
 	}
