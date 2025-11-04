@@ -121,9 +121,21 @@ export class DriverService {
 			throw new ForbiddenException('You do not own this car')
 		}
 
+		const { vehicle_type_id, ...restOfDto } = dto
+
+		const dataToUpdate: Prisma.CarUpdateInput = {
+			...restOfDto
+		}
+
+		if (vehicle_type_id) {
+			dataToUpdate.vehicle_type = {
+				connect: { id: vehicle_type_id }
+			}
+		}
+
 		return this.prisma.car.update({
 			where: { id: carId },
-			data: dto
+			data: dataToUpdate
 		})
 	}
 
