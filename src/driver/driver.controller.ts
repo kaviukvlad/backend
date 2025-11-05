@@ -13,9 +13,14 @@ import {
 	UploadedFiles,
 	UseInterceptors
 } from '@nestjs/common'
-import { FileInterceptor } from '@nestjs/platform-express'
+import {
+	FileFieldsInterceptor,
+	FileInterceptor
+} from '@nestjs/platform-express'
 import {
 	ApiBearerAuth,
+	ApiBody,
+	ApiConsumes,
 	ApiOperation,
 	ApiParam,
 	ApiResponse,
@@ -190,21 +195,64 @@ export class DriverController {
 	@Post('cars/:id/media')
 	@Auth()
 	@ApiOperation({ summary: 'Upload photo/video for car verification' })
+	@ApiConsumes('multipart/form-data')
+	@ApiBody({
+		schema: {
+			type: 'object',
+			properties: {
+				photos: { type: 'array', items: { type: 'string', format: 'binary' } },
+				video: { type: 'string', format: 'binary' }
+			}
+		}
+	})
+	@UseInterceptors(
+		FileFieldsInterceptor(
+			[
+				{ name: 'photos', maxCount: 6 },
+				{ name: 'video', maxCount: 1 }
+			],
+			{
+				storage: multerStorageOptions('vehicles'),
+				fileFilter: mediaFileFilter
+			}
+		)
+	)
 	async uploadCarMedia(
 		@CurrentDriver() driver: DriverProfile,
 		@Param('id') cardId: string,
 		@UploadedFiles()
 		files: { photos?: Express.Multer.File[]; video?: Express.Multer.File[] }
 	) {
-		if (!files.photos || !files.video) {
-			throw new BadRequestException('Photos and video are required.')
-		}
 		return this.driverService.uploadCarMedia(driver.id, cardId, files)
 	}
 
 	@Post('documents/verification')
 	@Auth()
 	@ApiOperation({ summary: 'Upload driver verification documents' })
+	@ApiConsumes('multipart/form-data')
+	@ApiBody({
+		schema: {
+			type: 'object',
+			properties: {
+				driversLicense: { type: 'string', format: 'binary' },
+				vehicleRegistration: { type: 'string', format: 'binary' },
+				selfieWithLicense: { type: 'string', format: 'binary' }
+			}
+		}
+	})
+	@UseInterceptors(
+		FileFieldsInterceptor(
+			[
+				{ name: 'driversLicense', maxCount: 1 },
+				{ name: 'vehicleRegistration', maxCount: 1 },
+				{ name: 'selfieWithLicense', maxCount: 1 }
+			],
+			{
+				storage: multerStorageOptions('documents'),
+				fileFilter: imageFileFilter
+			}
+		)
+	)
 	async uploadVerificationDocuments(
 		@CurrentDriver('id') driverId: string,
 		@UploadedFiles()
@@ -215,6 +263,7 @@ export class DriverController {
 		}
 	) {
 		if (
+			!files ||
 			!files.driversLicense ||
 			!files.vehicleRegistration ||
 			!files.selfieWithLicense
