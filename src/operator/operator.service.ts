@@ -34,25 +34,53 @@ export class OperatorService {
 					where: {
 						verification_status: 'APPROVED'
 					}
+				},
+
+				allowedVehicleTypes: {
+					select: { id: true }
+				},
+				user: {
+					select: { role: true }
 				}
 			}
 		})
+
 		if (!driver || driver.status !== 1) {
 			throw new BadRequestException('Driver not found or not approved.')
 		}
 
-		const car = driver.cars.find(c => c.vehicle_type_id === order.vehicleTypeId)
-		if (!car) {
+		const isOperatorDriver = driver.user.role === 'OPERATOR'
+
+		const allowedTypeIds = driver.allowedVehicleTypes.map(vt => vt.id)
+
+		if (!isOperatorDriver && !allowedTypeIds.includes(order.vehicleTypeId)) {
 			throw new BadRequestException(
-				'Driver does not have a suitable approved car for this order.'
+				'Driver is not allowed to take orders of this vehicle class.'
 			)
+		}
+
+		let carToAssignId: string | null = null
+
+		if (driver.cars.length > 0) {
+			const exactMatchCar = driver.cars.find(
+				c => c.vehicle_type_id === order.vehicleTypeId
+			)
+
+			if (exactMatchCar) {
+				carToAssignId = exactMatchCar.id
+			} else {
+				carToAssignId = driver.cars[0].id
+			}
+		} else if (!isOperatorDriver) {
+			throw new BadRequestException('Driver has no approved cars.')
 		}
 
 		return this.prisma.order.update({
 			where: { id: orderId },
 			data: {
 				driverId: dto.driverId,
-				car_id: car.id,
+
+				car_id: carToAssignId,
 				status: 'ACCEPTED'
 			}
 		})
