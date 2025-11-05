@@ -361,6 +361,9 @@ export class DriverService {
 			},
 			orderBy: {
 				trip_datetime: 'asc'
+			},
+			include: {
+				vehicleType: { select: { code: true } }
 			}
 		})
 
@@ -373,6 +376,10 @@ export class DriverService {
 						car.vehicle_type.max_luggage_small >= (order.luggage_small || 0)
 				) || isOperator
 			if (!luggageFits) return false
+
+			if (order.isAvailableToAll) {
+				return true
+			}
 
 			if (isOperator) {
 				return true
@@ -438,7 +445,7 @@ export class DriverService {
 		const orders = await this.prisma.order.findMany({
 			where: {
 				driverId,
-				status: { in: ['CANCELLED', 'CLIENT_NO_SHOW'] }
+				status: { in: ['COMPLETED', 'CLIENT_NO_SHOW'] }
 			},
 			orderBy: {
 				trip_datetime: 'desc'

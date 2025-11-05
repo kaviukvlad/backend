@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 import {
 	IsArray,
+	IsBoolean,
 	IsDateString,
 	IsEmail,
 	IsInt,
@@ -145,4 +146,8 @@ export class CreateOrderDto {
 	@IsInt()
 	@Min(0)
 	luggage_small?: number
+
+	@IsBoolean()
+	@IsOptional()
+	isAvailableToAll?: boolean
 }

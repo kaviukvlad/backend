@@ -158,6 +158,8 @@ model Order {
   region   Region? @relation(fields: [regionId], references: [id])
   regionId String?
 
+  isAvailableToAll Boolean @default(false)
+
   driver   DriverProfile? @relation(fields: [driverId], references: [id])
   driverId String?
   car      Car?           @relation(fields: [car_id], references: [id])

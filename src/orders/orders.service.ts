@@ -92,6 +92,7 @@ export class OrdersService {
 			vehicleTypeId: dto.vehicleTypeId,
 			clientId: clientId || null,
 			partnerId: partner?.id || null,
+			isAvailableToAll: dto.isAvailableToAll ?? false,
 			selectedOptions: {
 				create: dto.selectedOptions?.map(opt => {
 					const dbOption = optionsFromDb.find(o => o.id === opt.optionId)
