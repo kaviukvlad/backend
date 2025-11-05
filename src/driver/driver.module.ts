@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common'
+import { forwardRef, Module } from '@nestjs/common'
 import { MulterModule } from '@nestjs/platform-express'
+import { AuthModule } from 'src/auth/auth.module'
 import { NotificationsModule } from 'src/notifications/notifications.module'
 import { PricingModule } from 'src/pricing/pricing.module'
 import { PrismaService } from 'src/prisma.service'
@@ -8,6 +9,7 @@ import { DriverService } from './driver.service'
 
 @Module({
 	imports: [
+		forwardRef(() => AuthModule),
 		PricingModule,
 		NotificationsModule,
 		MulterModule.register({

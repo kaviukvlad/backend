@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { forwardRef, Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { JwtModule } from '@nestjs/jwt'
 import { getJwtConfig } from 'src/config/jwt.config'
@@ -11,6 +11,7 @@ import { JwtStrategy } from './jwt.strategy'
 
 @Module({
 	imports: [
+		forwardRef(() => DriverModule),
 		NewsletterModule,
 		UserModule,
 		DriverModule,
@@ -22,6 +23,7 @@ import { JwtStrategy } from './jwt.strategy'
 		})
 	],
 	controllers: [AuthController],
-	providers: [AuthService, JwtStrategy]
+	providers: [AuthService, JwtStrategy],
+	exports: [AuthService, JwtModule]
 })
 export class AuthModule {}
