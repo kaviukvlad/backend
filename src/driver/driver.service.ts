@@ -101,18 +101,31 @@ export class DriverService {
 	async addCar(driverId: string, dto: CreateCarDto) {
 		const { vehicle_type_id, ...rest } = dto
 
-		return this.prisma.car.create({
-			data: {
-				...rest,
-
-				driver: {
-					connect: { id: driverId }
-				},
-				vehicle_type: {
-					connect: { id: vehicle_type_id }
+		try {
+			const newCar = await this.prisma.car.create({
+				data: {
+					...rest,
+					driver: {
+						connect: { id: driverId }
+					},
+					vehicle_type: {
+						connect: { id: vehicle_type_id }
+					}
 				}
+			})
+			return newCar
+		} catch (error) {
+			if (
+				error instanceof Prisma.PrismaClientKnownRequestError &&
+				error.code === 'P2002'
+			) {
+				throw new BadRequestException(
+					'A car with this license plate already exists.'
+				)
 			}
-		})
+
+			throw error
+		}
 	}
 
 	async updateCar(driverId: string, carId: string, dto: UpdateCarDto) {
