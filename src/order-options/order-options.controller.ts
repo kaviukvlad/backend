@@ -62,7 +62,6 @@ export class OrderOptionsController {
 			}
 		}
 	})
-	@Auth()
 	findAllActive() {
 		return this.orderOptionsService.findAllActive()
 	}

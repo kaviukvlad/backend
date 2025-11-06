@@ -20,7 +20,6 @@ import { Auth } from 'src/auth/decorators/auth.decorators'
 import { AdminService } from './admin.service'
 import { CreateBreakpointDto } from './dto/create-breakpoint.dto'
 import { CreateOperatorDto } from './dto/create-operator.dto'
-import { CreateTariffDto } from './dto/create-tariff.dto'
 import { UpdateCarStatusDto } from './dto/update-car-status.dto'
 import { UpdateDocumentStatusDto } from './dto/update-document-status.dto'
 import { UpdateDriverCommissionDto } from './dto/update-driver-commission.dto'
@@ -344,13 +343,6 @@ export class AdminController {
 		@Body() dto: UpdateDriverVehicleTypesDto
 	) {
 		return this.adminService.updateDriverAllowedVehicleTypes(driverId, dto)
-	}
-
-	@Post('tariffs')
-	@ApiOperation({ summary: 'Create or update a tariff' })
-	@Auth(UserRole.ADMIN)
-	createTariff(@Body() dto: CreateTariffDto) {
-		return this.adminService.createTariff(dto)
 	}
 
 	@Post('operators')

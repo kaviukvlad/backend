@@ -8,7 +8,6 @@ import { hash } from 'argon2'
 import { PrismaService } from 'src/prisma.service'
 import { CreateBreakpointDto } from './dto/create-breakpoint.dto'
 import { CreateOperatorDto } from './dto/create-operator.dto'
-import { CreateTariffDto } from './dto/create-tariff.dto'
 import { UpdateDriverCommissionDto } from './dto/update-driver-commission.dto'
 import { UpdateDriverVehicleTypesDto } from './dto/update-driver-vehicle-types.dto'
 
@@ -208,35 +207,6 @@ export class AdminService {
 			},
 			include: {
 				allowedVehicleTypes: true
-			}
-		})
-	}
-
-	async createTariff(dto: CreateTariffDto) {
-		const existingTariff = await this.prisma.tariff.findUnique({
-			where: {
-				regionId_vehicleTypeId: {
-					regionId: dto.regionId,
-					vehicleTypeId: dto.vehicleTypeId
-				}
-			}
-		})
-
-		if (existingTariff) {
-			throw new ConflictException(
-				'Tariff for this region and vehicle type already exists.'
-			)
-		}
-
-		return this.prisma.tariff.create({
-			data: {
-				regionId: dto.regionId,
-				vehicleTypeId: dto.vehicleTypeId,
-				baseFare: dto.baseFare,
-				pricePerKm: dto.pricePerKm,
-				pricePerMinute: dto.pricePerMinute,
-				minimumFare: dto.minimumFare,
-				isActive: dto.isActive
 			}
 		})
 	}

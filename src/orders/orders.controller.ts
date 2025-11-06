@@ -296,11 +296,22 @@ export class OrdersController {
 	}
 
 	@Post('calculate-price')
-	@ApiOperation({ summary: 'Calculate trip price without creating an order' })
+	@ApiOperation({ summary: 'Calculate trip price components for frontend' })
 	@ApiResponse({
 		status: 200,
-		description: 'Price calculated successfully.',
-		schema: { example: { price: 120.5 } }
+		description: 'Price components retrieved successfully.',
+		schema: {
+			example: {
+				pricePerKm: 1.5,
+				vehicleMultiplier: 1.3,
+				maxDistanceToCenterKm: 35.5,
+				breakpoints: [
+					{ distanceKm: 10, coefficient: 1.0 },
+					{ distanceKm: 25, coefficient: 1.5 }
+				],
+				minimumFare: 50.0
+			}
+		}
 	})
 	@ApiResponse({
 		status: 400,

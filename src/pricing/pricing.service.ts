@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common'
-import { DistanceBreakpoint, Partner } from '@prisma/client'
+import { Partner } from '@prisma/client'
 import { GeoService } from 'src/geo/geo.service'
 import { CreateOrderDto } from 'src/orders/dto/create-order.dto'
 import { PrismaService } from 'src/prisma.service'
@@ -34,7 +34,7 @@ export class PricingService implements OnModuleInit {
 
 	async onModuleInit() {
 		await this.loadPricingSettings()
-		console.log('✅ Pricing settings loaded successfully.')
+		console.log(' Pricing settings loaded successfully.')
 	}
 
 	async loadPricingSettings(): Promise<void> {
@@ -44,59 +44,40 @@ export class PricingService implements OnModuleInit {
 		)
 	}
 
-	async calculateFinalPrice(
-		dto: CreateOrderDto,
-		partner?: Partner
-	): Promise<number> {
-		const basePrice = await this.calculateBasePrice(dto)
-
-		const optionsPrice = await this.calculateOptionsPrice(dto.selectedOptions)
-
-		let finalPrice = basePrice + optionsPrice
-
-		if (partner && partner?.markupPercent?.toNumber() > 0) {
-			const markup = partner.markupPercent.toNumber()
-			finalPrice *= 1 + markup / 100
-		}
-
-		return parseFloat(finalPrice.toFixed(2))
+	getSetting(key: string): number | undefined {
+		return this.settings.get(key)
 	}
 
-	private async calculateBasePrice(dto: CreateOrderDto): Promise<number> {
-		const [tariff, region] = await Promise.all([
-			this.prisma.tariff.findUnique({
-				where: {
-					regionId_vehicleTypeId: {
-						regionId: dto.regionId,
-						vehicleTypeId: dto.vehicleTypeId
-					}
-				}
+	async getPricingComponents(dto: CreateOrderDto) {
+		const pricePerKm = this.settings.get('GLOBAL_PRICE_PER_KM')
+		const minimumFare = this.settings.get('GLOBAL_MINIMUM_FARE')
+
+		if (!pricePerKm || !minimumFare) {
+			throw new BadRequestException(
+				'Global pricing settings (GLOBAL_PRICE_PER_KM or GLOBAL_MINIMUM_FARE) are missing.'
+			)
+		}
+
+		const [vehicleType, region] = await Promise.all([
+			this.prisma.vehicleType.findUnique({
+				where: { id: dto.vehicleTypeId }
 			}),
 			this.prisma.region.findUnique({
 				where: { id: dto.regionId },
 				include: {
-					breakpoints: {
-						orderBy: {
-							distanceKm: 'asc'
-						}
-					}
+					breakpoints: { orderBy: { distanceKm: 'asc' } }
 				}
 			})
 		])
 
-		if (!tariff || !tariff.isActive) {
-			throw new BadRequestException(
-				'Fares for this route and car type are not available.'
-			)
+		if (!vehicleType) {
+			throw new BadRequestException('Invalid vehicle type selected.')
 		}
 		if (!region || !region.latitude || !region.longitude) {
-			throw new BadRequestException('Region center coordinates are not set.')
+			throw new BadRequestException(
+				'Invalid region or coordinates are not set.'
+			)
 		}
-
-		const { distanceInKm } = await this.geoService.getDistanceAndDuration(
-			dto.waypoints
-		)
-		const pricePerKm = Number(tariff.pricePerKm)
 
 		const pickupPoint = dto.waypoints[0]
 		const dropoffPoint = dto.waypoints[dto.waypoints.length - 1]
@@ -113,44 +94,77 @@ export class PricingService implements OnModuleInit {
 			dropoffPoint.lat,
 			dropoffPoint.lng
 		)
-
 		const maxDistanceFromCenter = Math.max(
 			distanceFromCenterToA,
 			distanceFromCenterToB
 		)
 
-		const coefficient = this.getCoefficient(
-			maxDistanceFromCenter,
-			region.breakpoints
+		return {
+			pricePerKm: pricePerKm,
+			vehicleMultiplier: vehicleType.priceMultiplier.toNumber(),
+			maxDistanceToCenterKm: parseFloat(maxDistanceFromCenter.toFixed(2)),
+			breakpoints: region.breakpoints.map(bp => ({
+				distanceKm: bp.distanceKm,
+				coefficient: bp.coefficient.toNumber()
+			})),
+			minimumFare: minimumFare
+		}
+	}
+
+	private async calculateBasePrice(
+		dto: CreateOrderDto,
+		isAnyClassOrder: boolean = false
+	): Promise<number> {
+		const components = await this.getPricingComponents(dto)
+
+		const { distanceInKm } = await this.geoService.getDistanceAndDuration(
+			dto.waypoints
 		)
 
-		let calculatedPrice = distanceInKm * pricePerKm * coefficient
+		const breakpointCoeff = this.getCoefficient(
+			components.maxDistanceToCenterKm,
+			components.breakpoints
+		)
+		const vehicleCoeff = components.vehicleMultiplier
 
-		const nightSurchargeMultiplier =
-			this.settings.get('NIGHT_SURCHARGE_MULTIPLIER') || 1.0
-		const tripHour = new Date(dto.trip_datetime).getHours()
-		if ((tripHour >= 22 || tripHour < 6) && nightSurchargeMultiplier > 1) {
-			calculatedPrice *= nightSurchargeMultiplier
-		}
+		const finalBreakpointCoeff = isAnyClassOrder ? 1.0 : breakpointCoeff
+		const finalVehicleCoeff = isAnyClassOrder ? 1.0 : vehicleCoeff
 
-		const peakHourFee = this.settings.get('PEAK_HOUR_FEE') || 0
-		const isPeakHour =
-			(tripHour >= 8 && tripHour <= 10) || (tripHour >= 17 && tripHour <= 19)
-		if (isPeakHour && peakHourFee > 0) {
-			calculatedPrice += peakHourFee
-		}
+		let calculatedPrice =
+			distanceInKm *
+			components.pricePerKm *
+			finalBreakpointCoeff *
+			finalVehicleCoeff
 
-		const minimumFare = this.settings.get('GLOBAL_MINIMUM_FARE') || 50.0
-		if (calculatedPrice < minimumFare) {
-			calculatedPrice = minimumFare
+		if (calculatedPrice < components.minimumFare) {
+			calculatedPrice = components.minimumFare
 		}
 
 		return calculatedPrice
 	}
 
+	async calculateFinalPrice(
+		dto: CreateOrderDto,
+		partner?: Partner,
+		isAnyClassOrder: boolean = false
+	): Promise<number> {
+		const basePrice = await this.calculateBasePrice(dto, isAnyClassOrder)
+
+		const optionsPrice = await this.calculateOptionsPrice(dto.selectedOptions)
+
+		let finalPrice = basePrice + optionsPrice
+
+		if (partner && partner?.markupPercent?.toNumber() > 0) {
+			const markup = partner.markupPercent.toNumber()
+			finalPrice *= 1 + markup / 100
+		}
+
+		return parseFloat(finalPrice.toFixed(2))
+	}
+
 	private getCoefficient(
 		distance: number,
-		breakpoints: DistanceBreakpoint[]
+		breakpoints: { distanceKm: number; coefficient: number }[]
 	): number {
 		if (!breakpoints.length) {
 			return 1.0
@@ -158,11 +172,11 @@ export class PricingService implements OnModuleInit {
 
 		for (const bp of breakpoints) {
 			if (distance <= bp.distanceKm) {
-				return bp.coefficient.toNumber()
+				return bp.coefficient
 			}
 		}
 
-		return breakpoints[breakpoints.length - 1].coefficient.toNumber()
+		return breakpoints[breakpoints.length - 1].coefficient
 	}
 
 	private async calculateOptionsPrice(
@@ -205,9 +219,5 @@ export class PricingService implements OnModuleInit {
 			const quantity = selectedOpt.quantity || 1
 			return sum + Number(dbOption.price) * quantity
 		}, 0)
-	}
-
-	getSetting(key: string): number | undefined {
-		return this.settings.get(key)
 	}
 }
