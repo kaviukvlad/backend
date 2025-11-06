@@ -319,17 +319,12 @@ export class OrdersController {
 		schema: {
 			example: {
 				statusCode: 400,
-				message: 'Fares for this route and car type are not available.',
+				message:
+					'Global pricing settings (GLOBAL_PRICE_PER_KM or GLOBAL_MINIMUM_FARE) are missing.',
 				error: 'Bad Request'
 			}
 		}
 	})
-	@ApiResponse({
-		status: 401,
-		description: 'Unauthorized access.',
-		schema: { example: { statusCode: 401, message: 'Unauthorized' } }
-	})
-	@Auth(UserRole.USER)
 	async calculatePrice(
 		@Body(new ValidationPipe()) createOrderDto: CreateOrderDto
 	) {

@@ -33,6 +33,7 @@ export class VehicleTypeController {
 					id: 'clwtrgq5n000011a9d7z7f9c3',
 					code: 'STANDARD',
 					name: 'Standard',
+					priceMultiplier: 1.0,
 					max_passengers: 3,
 					max_luggage_standard: 2,
 					max_luggage_small: 1
@@ -41,6 +42,7 @@ export class VehicleTypeController {
 					id: 'clwtrgq5n000111a9d7z7f9c3',
 					code: 'BUSINESS',
 					name: 'Business',
+					priceMultiplier: 1.0,
 					max_passengers: 3,
 					max_luggage_standard: 2,
 					max_luggage_small: 2
@@ -49,6 +51,7 @@ export class VehicleTypeController {
 					id: 'clwtrgq5n000211a9d7z7f9c3',
 					code: 'MINIVAN',
 					name: 'Minivan',
+					priceMultiplier: 1.0,
 					max_passengers: 7,
 					max_luggage_standard: 6,
 					max_luggage_small: 2
@@ -57,6 +60,7 @@ export class VehicleTypeController {
 					id: 'clwtrgq5n000311a9d7z7f9c3',
 					code: 'BUS',
 					name: 'Bus',
+					priceMultiplier: 1.0,
 					max_passengers: 16,
 					max_luggage_standard: 16,
 					max_luggage_small: 16

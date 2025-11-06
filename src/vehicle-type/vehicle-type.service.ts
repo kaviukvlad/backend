@@ -41,6 +41,7 @@ export class VehicleTypeService {
 				id: vt.id,
 				code: vt.code,
 				name: translations?.name || vt.code,
+				priceMultiplier: vt.priceMultiplier.toNumber(),
 				max_passengers: vt.max_passengers,
 				max_luggage_standard: vt.max_luggage_standard,
 				max_luggage_small: vt.max_luggage_small
