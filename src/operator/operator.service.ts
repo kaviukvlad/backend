@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common'
 import { User } from '@prisma/client'
 import { verify } from 'argon2'
+import { DriverService } from 'src/driver/driver.service'
 import { PaymentService } from 'src/payment/payment.service'
 import { PrismaService } from 'src/prisma.service'
 import { AssignOrderDto } from './dto/assign-order.dto'
@@ -15,8 +16,41 @@ import { RefundOrderDto } from './dto/refund-order.dto'
 export class OperatorService {
 	constructor(
 		private prisma: PrismaService,
-		private paymentService: PaymentService
+		private paymentService: PaymentService,
+		private driverService: DriverService
 	) {}
+
+	async getDriversWithEarnings() {
+		const driversProfile = await this.prisma.driverProfile.findMany({
+			include: {
+				user: {
+					select: {
+						email: true,
+						phone: true,
+						role: true
+					}
+				},
+				region: {
+					select: {
+						name: true
+					}
+				}
+			}
+		})
+
+		const driversWithEarnings = await Promise.all(
+			driversProfile.map(async driver => {
+				const earnings = await this.driverService.getMyEarnings(driver.id)
+
+				return {
+					...driver,
+					totalEarnings: earnings.totalEarnings,
+					completedOrdersCount: earnings.completedOrdersCount
+				}
+			})
+		)
+		return driversWithEarnings
+	}
 
 	async assignOrder(orderId: string, dto: AssignOrderDto) {
 		const order = await this.prisma.order.findUnique({ where: { id: orderId } })

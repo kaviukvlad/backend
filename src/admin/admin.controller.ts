@@ -186,7 +186,7 @@ export class AdminController {
 			}
 		}
 	})
-	@Auth(UserRole.ADMIN)
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
 	async getPendingDrivers() {
 		return this.adminService.getPendingDrivers()
 	}
@@ -199,7 +199,7 @@ export class AdminController {
 		description: 'Driver status successfully updated.'
 	})
 	@ApiResponse({ status: 404, description: 'Driver profile not found.' })
-	@Auth(UserRole.ADMIN)
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
 	async approveDriver(@Param('id') driverId: string) {
 		return this.adminService.updateDriverStatus(driverId, 1)
 	}
@@ -243,7 +243,7 @@ export class AdminController {
 			}
 		}
 	})
-	@Auth(UserRole.ADMIN)
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
 	async getPendingCars() {
 		return this.adminService.getPendingCars()
 	}
@@ -256,7 +256,7 @@ export class AdminController {
 		description: 'Vehicle status successfully updated.'
 	})
 	@ApiResponse({ status: 404, description: 'Vehicle not found.' })
-	@Auth(UserRole.ADMIN)
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
 	async verifyCar(
 		@Param('id') carId: string,
 		@Body() dto: UpdateCarStatusDto,
@@ -299,7 +299,7 @@ export class AdminController {
 			}
 		}
 	})
-	@Auth(UserRole.ADMIN)
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
 	async getPendingDocuments() {
 		return this.adminService.getPendingDocuments()
 	}
