@@ -36,7 +36,6 @@ export class OrdersController {
 
 	@Post('my')
 	@ApiOperation({ summary: 'Create a new order as a client' })
-	@Auth(UserRole.USER)
 	async createMyOrder(
 		@Body(new ValidationPipe()) createOrderDto: CreateOrderDto,
 		@CurrentClient('id') clientId: string
@@ -82,7 +81,6 @@ export class OrdersController {
 		description: 'Unauthorized access.',
 		schema: { example: { statusCode: 401, message: 'Unauthorized' } }
 	})
-	@Auth(UserRole.USER)
 	async getMyOrders(@CurrentClient('id') clientId: string) {
 		return this.ordersService.findMyOrders(clientId)
 	}
@@ -141,7 +139,6 @@ export class OrdersController {
 			}
 		}
 	})
-	@Auth(UserRole.USER)
 	async getMyOrderById(
 		@Param('id') orderId: string,
 		@CurrentClient('id') clientId: string
@@ -151,7 +148,6 @@ export class OrdersController {
 
 	@Patch('my/:id/cancel')
 	@ApiOperation({ summary: 'Cancel my order' })
-	@Auth(UserRole.USER)
 	async cancelMyOrder(
 		@Param('id') orderId: string,
 		@CurrentClient('id') clientId: string
