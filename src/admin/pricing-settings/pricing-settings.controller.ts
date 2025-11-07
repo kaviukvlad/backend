@@ -1,5 +1,3 @@
-// file: src/admin/pricing-settings/pricing-settings.controller.ts
-
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common'
 import { CreatePricingSettingDto } from './dto/create-pricing-setting.dto'
 import { UpdatePricingSettingDto } from './dto/update-setting.dto'
