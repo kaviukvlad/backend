@@ -7,6 +7,7 @@ import { NewsletterModule } from 'src/newsletter/newsletter.module'
 import { UserModule } from 'src/user/user.module'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
+import { JwtAuthOptionalGuard } from './guard/jwt-auth-optional.guard'
 import { JwtStrategy } from './jwt.strategy'
 
 @Module({
@@ -23,7 +24,7 @@ import { JwtStrategy } from './jwt.strategy'
 		})
 	],
 	controllers: [AuthController],
-	providers: [AuthService, JwtStrategy],
-	exports: [AuthService, JwtModule]
+	providers: [AuthService, JwtStrategy, JwtAuthOptionalGuard],
+	exports: [AuthService, JwtModule, JwtAuthOptionalGuard]
 })
 export class AuthModule {}

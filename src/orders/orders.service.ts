@@ -389,15 +389,8 @@ export class OrdersService {
 		let finalPrice = order.price.toNumber()
 		let optionsFromDb: OrderOption[] = []
 
-		if (dto.price !== undefined || dto.selectedOptions || dto.vehicleTypeId) {
+		if (dto.selectedOptions || dto.vehicleTypeId) {
 			const dataForPricing: CreateOrderDto = {
-				price:
-					dto.price ??
-					order.price.toNumber() -
-						order.selectedOptions.reduce(
-							(sum, opt) => sum + Number(opt.priceAtTimeOfOrder) * opt.quantity,
-							0
-						),
 				selectedOptions:
 					dto.selectedOptions ??
 					order.selectedOptions.map(o => ({
@@ -411,13 +404,13 @@ export class OrdersService {
 				).toISOString(),
 				passenger_count: dto.passenger_count || order.passenger_count,
 				regionId: dto.regionId || order.regionId!,
-
 				vehicleTypeId: dto.vehicleTypeId || order.vehicleTypeId
 			}
 
 			finalPrice = await this.pricingService.calculateFinalPrice(
 				dataForPricing,
-				partner ?? undefined
+				partner ?? undefined,
+				dto.isAvailableToAll ?? order.isAvailableToAll
 			)
 
 			if (dto.selectedOptions) {

@@ -10,7 +10,6 @@ import {
 	IsNotEmpty,
 	IsNumber,
 	IsOptional,
-	IsPositive,
 	IsString,
 	MaxLength,
 	Min,
@@ -99,14 +98,6 @@ export class CreateOrderDto {
 	@IsString()
 	@IsNotEmpty()
 	vehicleTypeId: string
-
-	@ApiProperty({
-		description: 'Base trip cost (excluding additional options)',
-		example: 350.5
-	})
-	@IsNumber()
-	@IsPositive()
-	price: number
 
 	@ApiProperty({
 		description: 'Flight number (for airports)',
