@@ -33,7 +33,7 @@ export class VehicleTypeService {
 			}
 		})
 
-		return vehicleTypes.map(vt => {
+		const mappedTypes = vehicleTypes.map(vt => {
 			const translations =
 				vt.translations.find(t => t.locale === locale) || vt.translations[0]
 
@@ -47,5 +47,21 @@ export class VehicleTypeService {
 				max_luggage_small: vt.max_luggage_small
 			}
 		})
+
+		const standardType = mappedTypes.find(vt => vt.code === 'STANDARD')
+
+		if (standardType) {
+			const anyType = {
+				...standardType,
+				id: 'ANY_VIRTUAL_ID',
+				code: 'ANY',
+				name: locale === 'uk' ? 'Будь-який' : 'Any',
+				priceMultiplier: 1.0
+			}
+
+			return [anyType, ...mappedTypes]
+		}
+
+		return mappedTypes
 	}
 }

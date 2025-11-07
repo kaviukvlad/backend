@@ -37,7 +37,7 @@ export class PricingService implements OnModuleInit {
 
 	async onModuleInit() {
 		await this.loadPricingSettings()
-		console.log('✅ Pricing settings loaded successfully.')
+		console.log('Pricing settings loaded successfully.')
 	}
 
 	async loadPricingSettings(): Promise<void> {
@@ -194,16 +194,36 @@ export class PricingService implements OnModuleInit {
 		partner?: Partner,
 		isAnyClassOrder: boolean = false
 	): Promise<number> {
-		const basePrice = await this.calculateBasePrice(dto, isAnyClassOrder)
 		const optionsPrice = await this.calculateOptionsPrice(dto.selectedOptions)
-		let finalPrice = basePrice + optionsPrice
+
+		const baseOutboundPrice = await this.calculateBasePrice(
+			dto,
+			isAnyClassOrder
+		)
+
+		let totalPrice = baseOutboundPrice + optionsPrice
+
+		if (dto.return_waypoints && dto.return_trip_datetime) {
+			const returnDto = {
+				...dto,
+				waypoints: dto.return_waypoints,
+				trip_datetime: dto.return_trip_datetime
+			}
+
+			const baseReturnPrice = await this.calculateBasePrice(
+				returnDto,
+				isAnyClassOrder
+			)
+
+			totalPrice += baseReturnPrice + optionsPrice
+		}
 
 		if (partner && partner?.markupPercent?.toNumber() > 0) {
 			const markup = partner.markupPercent.toNumber()
-			finalPrice *= 1 + markup / 100
+			totalPrice *= 1 + markup / 100
 		}
 
-		return parseFloat(finalPrice.toFixed(2))
+		return parseFloat(totalPrice.toFixed(2))
 	}
 
 	private getCoefficient(

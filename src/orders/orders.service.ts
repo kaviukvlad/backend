@@ -37,6 +37,8 @@ export class OrdersService {
 			paymentIntentId?: string
 		} = {}
 	) {
+		const { clientId, paymentIntentId, partner } = options
+
 		const tripTime = new Date(dto.trip_datetime)
 		const now = new Date()
 		const twentyFourHoursInMs = 24 * 60 * 60 * 1000
@@ -47,7 +49,19 @@ export class OrdersService {
 			)
 		}
 
-		const { clientId, paymentIntentId, partner } = options
+		if (dto.return_trip_datetime) {
+			const returnTripTime = new Date(dto.return_trip_datetime)
+			if (returnTripTime.getTime() - now.getTime() < twentyFourHoursInMs) {
+				throw new BadRequestException(
+					'Return trip date must also be 24 hours in the future.'
+				)
+			}
+			if (returnTripTime.getTime() <= tripTime.getTime()) {
+				throw new BadRequestException(
+					'Return trip must be after the outbound trip.'
+				)
+			}
+		}
 
 		const region = await this.prisma.region.findUnique({
 			where: { id: dto.regionId }
@@ -66,101 +80,185 @@ export class OrdersService {
 			)
 		}
 
-		const { distanceInKm, durationInMinutes } =
-			await this.geoService.getDistanceAndDuration(dto.waypoints)
-
-		const optionsFromDb = dto.selectedOptions?.length
-			? await this.prisma.orderOption.findMany({
-					where: {
-						id: { in: dto.selectedOptions.map(o => o.optionId) }
-					}
-				})
-			: []
-
-		const baseOrderData = {
-			routeWaypoints: dto.waypoints as any,
-			customerEmail: dto.customerEmail,
-			trip_datetime: new Date(dto.trip_datetime),
-			passenger_count: dto.passenger_count,
-			regionId: dto.regionId,
-			flight_number: dto.flight_number,
-			notes: dto.notes,
-			luggage_standard: dto.luggage_standard,
-			luggage_small: dto.luggage_small,
-			distanceInKm,
-			durationInMinutes,
-			vehicleTypeId: dto.vehicleTypeId,
-			clientId: clientId || null,
-			partnerId: partner?.id || null,
-			isAvailableToAll: dto.isAvailableToAll ?? false,
-			selectedOptions: {
-				create: dto.selectedOptions?.map(opt => {
-					const dbOption = optionsFromDb.find(o => o.id === opt.optionId)
-					if (!dbOption) {
-						throw new BadRequestException(
-							`Invalid order option ID: ${opt.optionId}`
-						)
-					}
-					return {
-						quantity: opt.quantity || 1,
-						priceAtTimeOfOrder: dbOption.price,
-						option: { connect: { id: opt.optionId } }
-					}
-				})
-			}
-		}
-
 		if (vehicleType.code === 'BUS') {
+			const { distanceInKm, durationInMinutes } =
+				await this.geoService.getDistanceAndDuration(dto.waypoints)
+
+			const optionsFromDb = dto.selectedOptions?.length
+				? await this.prisma.orderOption.findMany({
+						where: {
+							id: { in: dto.selectedOptions.map(o => o.optionId) }
+						}
+					})
+				: []
+
 			const busOrder = await this.prisma.order.create({
 				data: {
-					...baseOrderData,
+					routeWaypoints: dto.waypoints as any,
+					customerEmail: dto.customerEmail,
+					trip_datetime: tripTime,
+					passenger_count: dto.passenger_count,
+					regionId: dto.regionId,
+					flight_number: dto.flight_number,
+					notes: dto.notes,
+					luggage_standard: dto.luggage_standard || 0,
+					luggage_small: dto.luggage_small || 0,
+					distanceInKm,
+					durationInMinutes,
+					vehicleTypeId: dto.vehicleTypeId,
+					clientId: clientId || null,
+					partnerId: partner?.id || null,
+					isAvailableToAll: false,
 					price: 0,
 					status: 'PENDING_MANUAL_CONFIRMATION',
-					paymentIntentId: null
+					paymentIntentId: null,
+					bookingCode: randomUUID(),
+					selectedOptions: {
+						create: dto.selectedOptions?.map(opt => {
+							const dbOption = optionsFromDb.find(o => o.id === opt.optionId)!
+							return {
+								quantity: opt.quantity || 1,
+								priceAtTimeOfOrder: dbOption.price,
+								option: { connect: { id: opt.optionId } }
+							}
+						})
+					}
+				}
+			})
+			await this.notificationsService.sendBusOrderNotification(busOrder)
+			return busOrder
+		}
+
+		if (paymentIntentId) {
+			const optionsPrice = await this.pricingService['calculateOptionsPrice'](
+				dto.selectedOptions
+			)
+
+			const baseOutboundPrice = await this.pricingService['calculateBasePrice'](
+				dto,
+				dto.isAvailableToAll
+			)
+			const finalOutboundPrice = baseOutboundPrice + optionsPrice
+
+			const { distanceInKm, durationInMinutes } =
+				await this.geoService.getDistanceAndDuration(dto.waypoints)
+
+			const bookingCode = randomUUID()
+			const optionsFromDb = dto.selectedOptions?.length
+				? await this.prisma.orderOption.findMany({
+						where: {
+							id: { in: dto.selectedOptions.map(o => o.optionId) }
+						}
+					})
+				: []
+
+			const outboundOrder = await this.prisma.order.create({
+				data: {
+					clientId: clientId || null,
+					paymentIntentId: paymentIntentId,
+					customerEmail: dto.customerEmail,
+					regionId: dto.regionId,
+					vehicleTypeId: dto.vehicleTypeId,
+					isAvailableToAll: dto.isAvailableToAll ?? false,
+					routeWaypoints: dto.waypoints as any,
+					distanceInKm,
+					durationInMinutes,
+					price: finalOutboundPrice,
+					status: 'NEW',
+					trip_datetime: tripTime,
+					notes: dto.notes,
+					passenger_count: dto.passenger_count,
+					flight_number: dto.flight_number,
+					luggage_standard: dto.luggage_standard || 0,
+					luggage_small: dto.luggage_small || 0,
+					bookingCode: bookingCode,
+					selectedOptions: {
+						create: dto.selectedOptions?.map(opt => {
+							const dbOption = optionsFromDb.find(o => o.id === opt.optionId)!
+							return {
+								quantity: opt.quantity || 1,
+								priceAtTimeOfOrder: dbOption.price,
+								option: { connect: { id: opt.optionId } }
+							}
+						})
+					}
 				}
 			})
 
-			await this.notificationsService.sendBusOrderNotification(busOrder)
-
-			return busOrder
-		} else {
-			if (paymentIntentId) {
-				const finalPrice = await this.pricingService.calculateFinalPrice(
-					dto,
-					partner
+			if (dto.return_waypoints && dto.return_trip_datetime) {
+				const returnDto = {
+					...dto,
+					waypoints: dto.return_waypoints,
+					trip_datetime: dto.return_trip_datetime
+				}
+				const baseReturnPrice = await this.pricingService['calculateBasePrice'](
+					returnDto,
+					dto.isAvailableToAll
 				)
-				const newOrder = await this.prisma.order.create({
+				const finalReturnPrice = baseReturnPrice + optionsPrice
+
+				const { distanceInKm: returnDist, durationInMinutes: returnDur } =
+					await this.geoService.getDistanceAndDuration(dto.return_waypoints)
+
+				await this.prisma.order.create({
 					data: {
-						...baseOrderData,
-						price: finalPrice,
+						clientId: clientId || null,
+						paymentIntentId: `${paymentIntentId}_return`,
+						customerEmail: dto.customerEmail,
+						regionId: dto.regionId,
+						vehicleTypeId: dto.vehicleTypeId,
+						isAvailableToAll: dto.isAvailableToAll ?? false,
+						routeWaypoints: dto.return_waypoints as any,
+						distanceInKm: returnDist,
+						durationInMinutes: returnDur,
+						price: finalReturnPrice,
 						status: 'NEW',
-						paymentIntentId: paymentIntentId
+						trip_datetime: new Date(dto.return_trip_datetime),
+						notes: dto.notes,
+						passenger_count: dto.passenger_count,
+						flight_number: dto.return_flight_number,
+						luggage_standard: dto.luggage_standard || 0,
+						luggage_small: dto.luggage_small || 0,
+						bookingCode: bookingCode,
+						selectedOptions: {
+							create: dto.selectedOptions?.map(opt => {
+								const dbOption = optionsFromDb.find(o => o.id === opt.optionId)!
+								return {
+									quantity: opt.quantity || 1,
+									priceAtTimeOfOrder: dbOption.price,
+									option: { connect: { id: opt.optionId } }
+								}
+							})
+						}
 					}
 				})
-				return newOrder
 			}
 
-			const finalPrice = await this.pricingService.calculateFinalPrice(
-				dto,
-				partner
-			)
-			const clientJobId = randomUUID()
+			return outboundOrder
+		}
 
-			await this.paymentQueue.add(
-				CREATE_PAYMENT_JOB,
-				{
-					amount: finalPrice,
-					currency: 'EUR',
-					orderDetails: dto,
-					clientId: clientId
-				},
-				{ jobId: clientJobId }
-			)
+		const finalPrice = await this.pricingService.calculateFinalPrice(
+			dto,
+			partner ?? undefined,
+			dto.isAvailableToAll ?? false
+		)
 
-			return {
-				jobId: clientJobId,
-				message: 'Payment creation has been queued.'
-			}
+		const clientJobId = randomUUID()
+
+		await this.paymentQueue.add(
+			CREATE_PAYMENT_JOB,
+			{
+				amount: finalPrice,
+				currency: 'EUR',
+				orderDetails: dto,
+				clientId: clientId
+			},
+			{ jobId: clientJobId }
+		)
+
+		return {
+			jobId: clientJobId,
+			message: 'Payment creation has been queued.'
 		}
 	}
 

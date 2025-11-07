@@ -6,6 +6,7 @@ import {
 	IsDateString,
 	IsEmail,
 	IsInt,
+	IsISO8601,
 	IsNotEmpty,
 	IsNumber,
 	IsOptional,
@@ -150,4 +151,18 @@ export class CreateOrderDto {
 	@IsBoolean()
 	@IsOptional()
 	isAvailableToAll?: boolean
+
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => WaypointDto)
+	@IsOptional()
+	return_waypoints?: WaypointDto[]
+
+	@IsISO8601()
+	@IsOptional()
+	return_trip_datetime?: string
+
+	@IsString()
+	@IsOptional()
+	return_flight_number?: string
 }

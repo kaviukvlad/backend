@@ -30,6 +30,15 @@ export class VehicleTypeController {
 		schema: {
 			example: [
 				{
+					id: 'ANY_VIRTUAL_ID',
+					code: 'ANY',
+					name: 'Any',
+					priceMultiplier: 1.0,
+					max_passengers: 3,
+					max_luggage_standard: 2,
+					max_luggage_small: 1
+				},
+				{
 					id: 'clwtrgq5n000011a9d7z7f9c3',
 					code: 'STANDARD',
 					name: 'Standard',
@@ -42,7 +51,7 @@ export class VehicleTypeController {
 					id: 'clwtrgq5n000111a9d7z7f9c3',
 					code: 'BUSINESS',
 					name: 'Business',
-					priceMultiplier: 1.0,
+					priceMultiplier: 1.3,
 					max_passengers: 3,
 					max_luggage_standard: 2,
 					max_luggage_small: 2
