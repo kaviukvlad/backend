@@ -4,6 +4,7 @@ import {
 	IsISO8601,
 	IsInt,
 	IsNotEmpty,
+	IsOptional,
 	IsString,
 	Min,
 	ValidateNested
@@ -31,9 +32,11 @@ export class CalculatePriceDto {
 	regionId: string
 
 	@IsISO8601()
+	@IsOptional()
 	trip_datetime: string
 
 	@IsInt()
 	@Min(1)
+	@IsOptional()
 	passenger_count: number
 }

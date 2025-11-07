@@ -5,14 +5,17 @@ import {
 	Get,
 	HttpCode,
 	Param,
+	ParseFloatPipe,
 	Patch,
-	Post
+	Post,
+	Query
 } from '@nestjs/common'
 import {
 	ApiBearerAuth,
 	ApiExtraModels,
 	ApiOperation,
 	ApiParam,
+	ApiQuery,
 	ApiResponse,
 	ApiTags,
 	getSchemaPath
@@ -115,5 +118,27 @@ export class RegionController {
 	update(@Param('id') id: string, @Body() updateRegionDto: UpdateRegionDto) {
 		console.log(`Trying to update region with ID: ${id}`)
 		return this.regionService.updata(id, updateRegionDto)
+	}
+
+	@Get('find-by-coords')
+	@ApiOperation({ summary: 'Find the closest region based on coordinates' })
+	@ApiQuery({ name: 'lat', required: true, type: Number, example: 48.8566 })
+	@ApiQuery({ name: 'lng', required: true, type: Number, example: 2.3522 })
+	@ApiResponse({
+		status: 200,
+		description: 'Returns the closest matching region.',
+		schema: {
+			example: {
+				id: 'clxtest...abc',
+				name: 'Paris',
+				distanceKm: 5.2
+			}
+		}
+	})
+	async findRegion(
+		@Query('lat', ParseFloatPipe) lat: number,
+		@Query('lng', ParseFloatPipe) lng: number
+	) {
+		return this.regionService.findByCoordinates(lat, lng)
 	}
 }
