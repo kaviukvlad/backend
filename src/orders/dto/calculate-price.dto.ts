@@ -1,14 +1,5 @@
 import { Type } from 'class-transformer'
-import {
-	IsArray,
-	IsISO8601,
-	IsInt,
-	IsNotEmpty,
-	IsOptional,
-	IsString,
-	Min,
-	ValidateNested
-} from 'class-validator'
+import { IsArray, IsNotEmpty, IsString, ValidateNested } from 'class-validator'
 
 class WaypointDto {
 	@IsNotEmpty()
@@ -30,13 +21,4 @@ export class CalculatePriceDto {
 	@IsString()
 	@IsNotEmpty()
 	regionId: string
-
-	@IsISO8601()
-	@IsOptional()
-	trip_datetime: string
-
-	@IsInt()
-	@Min(1)
-	@IsOptional()
-	passenger_count: number
 }

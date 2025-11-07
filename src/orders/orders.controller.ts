@@ -7,6 +7,8 @@ import {
 	Patch,
 	Post,
 	Query,
+	Req,
+	UseGuards,
 	ValidationPipe
 } from '@nestjs/common'
 import {
@@ -18,6 +20,7 @@ import {
 import { UserRole } from '@prisma/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { CurrentClient } from 'src/auth/decorators/client.decorators'
+import { JwtAuthOptionalGuard } from 'src/auth/guard/jwt-auth-optional.guard'
 import { PricingService } from 'src/pricing/pricing.service'
 import { CalculatePriceDto } from './dto/calculate-price.dto'
 import { CreateOrderDto } from './dto/create-order.dto'
@@ -35,14 +38,17 @@ export class OrdersController {
 	) {}
 
 	@Post('my')
-	@ApiOperation({ summary: 'Create a new order as a client' })
+	@ApiOperation({ summary: 'Create a new order (public or as a client)' })
+	@UseGuards(JwtAuthOptionalGuard)
 	async createMyOrder(
 		@Body(new ValidationPipe()) createOrderDto: CreateOrderDto,
-		@CurrentClient('id') clientId: string
+		@Req() req
 	) {
+		const user = req.user as any
+		const clientId = user?.clientProfile?.id
+
 		return this.ordersService.create(createOrderDto, { clientId })
 	}
-
 	@Get('my')
 	@ApiOperation({ summary: 'Get my order history' })
 	@ApiResponse({
@@ -81,6 +87,7 @@ export class OrdersController {
 		description: 'Unauthorized access.',
 		schema: { example: { statusCode: 401, message: 'Unauthorized' } }
 	})
+	@Auth(UserRole.USER)
 	async getMyOrders(@CurrentClient('id') clientId: string) {
 		return this.ordersService.findMyOrders(clientId)
 	}
@@ -139,6 +146,7 @@ export class OrdersController {
 			}
 		}
 	})
+	@Auth(UserRole.USER)
 	async getMyOrderById(
 		@Param('id') orderId: string,
 		@CurrentClient('id') clientId: string
@@ -148,6 +156,7 @@ export class OrdersController {
 
 	@Patch('my/:id/cancel')
 	@ApiOperation({ summary: 'Cancel my order' })
+	@Auth(UserRole.USER)
 	async cancelMyOrder(
 		@Param('id') orderId: string,
 		@CurrentClient('id') clientId: string
