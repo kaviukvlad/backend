@@ -19,6 +19,7 @@ import { UserRole } from '@prisma/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { CurrentClient } from 'src/auth/decorators/client.decorators'
 import { PricingService } from 'src/pricing/pricing.service'
+import { CalculatePriceDto } from './dto/calculate-price.dto'
 import { CreateOrderDto } from './dto/create-order.dto'
 import { SearchOrderDto } from './dto/search-order.dto'
 import { UpdateOrderDto } from './dto/update-order.dto'
@@ -296,26 +297,40 @@ export class OrdersController {
 	}
 
 	@Post('calculate-price')
-	@ApiOperation({ summary: 'Calculate trip price components for frontend' })
+	@ApiOperation({ summary: 'Calculate price range for all vehicle types' })
 	@ApiResponse({
 		status: 200,
-		description: 'Price components retrieved successfully.',
+		description: 'Price range calculated successfully.',
 		schema: {
-			example: {
-				pricePerKm: 1.5,
-				vehicleMultiplier: 1.3,
-				maxDistanceToCenterKm: 35.5,
-				breakpoints: [
-					{ distanceKm: 10, coefficient: 1.0 },
-					{ distanceKm: 25, coefficient: 1.5 }
-				],
-				minimumFare: 50.0
-			}
+			example: [
+				{
+					id: 'clx...',
+					code: 'STANDARD',
+					name: 'Standard',
+					price: 55.0,
+					multiplier: 1.0
+				},
+				{
+					id: 'clx...',
+					code: 'BUSINESS',
+					name: 'Business',
+					price: 90.0,
+					multiplier: 1.3
+				},
+				{
+					id: 'clx...',
+					code: 'MINIVAN',
+					name: 'Minivan',
+					price: 75.0,
+					multiplier: 1.1
+				}
+			]
 		}
 	})
 	@ApiResponse({
 		status: 400,
-		description: 'Bad request (e.g., tariff not found, invalid region).',
+		description:
+			'Bad request (e.g., region not found, pricing settings missing).',
 		schema: {
 			example: {
 				statusCode: 400,
@@ -325,11 +340,7 @@ export class OrdersController {
 			}
 		}
 	})
-	async calculatePrice(
-		@Body(new ValidationPipe()) createOrderDto: CreateOrderDto
-	) {
-		const finalPrice =
-			await this.pricingService.calculateFinalPrice(createOrderDto)
-		return { price: finalPrice }
+	async calculatePrice(@Body(new ValidationPipe()) dto: CalculatePriceDto) {
+		return this.pricingService.calculatePriceRange(dto)
 	}
 }
