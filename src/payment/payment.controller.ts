@@ -20,7 +20,6 @@ import Stripe from 'stripe'
 import { PaymentService } from './payment.service'
 
 import { SkipThrottle } from '@nestjs/throttler'
-// import { PAYMENT_QUEUE } from './constants' // 👈 ВИДАЛІТЬ ЦЕЙ РЯДОК
 
 @ApiTags('Payment')
 @Controller('payment')
@@ -31,7 +30,6 @@ export class PaymentController {
 		private readonly pdfService: PdfService,
 		private readonly emailService: EmailService,
 		@Inject(CACHE_MANAGER) private cacheManager: Cache
-		// 👈 Queue видалено
 	) {}
 
 	@Get('job/:jobId')
@@ -97,15 +95,30 @@ export class PaymentController {
 		if (event.type === 'payment_intent.succeeded') {
 			const paymentIntent = event.data.object as Stripe.PaymentIntent
 
-			const orderDetailsRaw = paymentIntent.metadata?.order_details
-			const clientId = paymentIntent.metadata?.client_id
+			// --- ПОЧАТОК НОВОЇ ЛОГІКИ ---
+			const metadata = paymentIntent.metadata
+			const clientId = metadata?.client_id
+			const chunkCount = metadata?.order_details_count
+				? parseInt(metadata.order_details_count, 10)
+				: 0
 
-			if (!orderDetailsRaw) {
-				// 👈 ТРОХИ ЗМІНЕНО (clientId може бути порожнім)
+			if (!chunkCount) {
 				console.warn(
-					`Missing order_details in metadata for PI: ${paymentIntent.id}`
+					`Missing order_details_count in metadata for PI: ${paymentIntent.id}`
 				)
 				return { received: true }
+			}
+
+			let orderDetailsRaw = ''
+			for (let i = 0; i < chunkCount; i++) {
+				const chunk = metadata[`order_details_${i + 1}`]
+				if (!chunk) {
+					console.error(
+						`Missing metadata chunk order_details_${i + 1} for PI: ${paymentIntent.id}`
+					)
+					return { received: true }
+				}
+				orderDetailsRaw += chunk
 			}
 
 			let orderDetailsDto: CreateOrderDto

@@ -44,6 +44,28 @@ export class PaymentService {
 	) {
 		const amountInCents = Math.round(amount * 100)
 
+		const orderJson = JSON.stringify(orderDetails)
+		const metadata: Stripe.MetadataParam = {
+			client_id: clientId
+		}
+
+		const CHUNK_SIZE = 500
+		const chunkCount = Math.ceil(orderJson.length / CHUNK_SIZE)
+
+		if (chunkCount > 10) {
+			throw new InternalServerErrorException(
+				'Order data is too large for Stripe metadata.'
+			)
+		}
+
+		metadata['order_details_count'] = String(chunkCount)
+		for (let i = 0; i < chunkCount; i++) {
+			metadata[`order_details_${i + 1}`] = orderJson.substring(
+				i * CHUNK_SIZE,
+				(i + 1) * CHUNK_SIZE
+			)
+		}
+
 		const paymentIntent = await this.stripe.paymentIntents.create({
 			amount: amountInCents,
 			currency: currency.toLowerCase(),
@@ -51,10 +73,7 @@ export class PaymentService {
 				enabled: true,
 				allow_redirects: 'never'
 			},
-			metadata: {
-				order_details: JSON.stringify(orderDetails),
-				client_id: clientId
-			}
+			metadata: metadata
 		})
 
 		return {
