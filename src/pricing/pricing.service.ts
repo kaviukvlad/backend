@@ -2,13 +2,13 @@ import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common'
 import { DistanceBreakpoint, Partner } from '@prisma/client'
 import { GeoService } from 'src/geo/geo.service'
 import { CalculatePriceDto } from 'src/orders/dto/calculate-price.dto'
-
 import { CreateOrderDto } from 'src/orders/dto/create-order.dto'
 import { PrismaService } from 'src/prisma.service'
 
 @Injectable()
 export class PricingService implements OnModuleInit {
 	private settings: Map<string, number> = new Map()
+
 	private readonly GLOBAL_MINIMUM_FARE = 50.0
 
 	private calculateDistance(
@@ -37,7 +37,7 @@ export class PricingService implements OnModuleInit {
 
 	async onModuleInit() {
 		await this.loadPricingSettings()
-		console.log('Pricing settings loaded successfully.')
+		console.log('✅ Pricing settings loaded successfully.')
 	}
 
 	async loadPricingSettings(): Promise<void> {
@@ -51,11 +51,17 @@ export class PricingService implements OnModuleInit {
 		return this.settings.get(key)
 	}
 
-	async calculatePriceRange(dto: CalculatePriceDto) {
+	async calculatePriceRange(dto: CalculatePriceDto, locale: string = 'en') {
+		const fallbackLocale = 'en'
+
 		const [allVehicleTypes, region, geoData, pricePerKm, minimumFare] =
 			await Promise.all([
 				this.prisma.vehicleType.findMany({
-					include: { translations: { where: { locale: 'en' } } }
+					include: {
+						translations: {
+							where: { locale: { in: [locale, fallbackLocale] } }
+						}
+					}
 				}),
 				this.prisma.region.findUnique({
 					where: { id: dto.regionId },
@@ -63,7 +69,8 @@ export class PricingService implements OnModuleInit {
 				}),
 				this.geoService.getDistanceAndDuration(dto.waypoints),
 				this.settings.get('GLOBAL_PRICE_PER_KM'),
-				this.settings.get('GLOBAL_MINIMUM_FARE')
+
+				this.settings.get('GLOBAL_MINIMUM_FARE') || this.GLOBAL_MINIMUM_FARE
 			])
 
 		if (!region || !region.latitude || !region.longitude) {
@@ -95,13 +102,13 @@ export class PricingService implements OnModuleInit {
 			maxDistanceToCenterKm,
 			region.breakpoints
 		)
-
 		const { distanceInKm } = geoData
 
-		const prices = allVehicleTypes
+		const realTypePrices = allVehicleTypes
 			.filter(vt => vt.code !== 'BUS')
 			.map(vehicleType => {
 				const vehicleMultiplier = vehicleType.priceMultiplier.toNumber()
+
 				let calculatedPrice =
 					distanceInKm * pricePerKm * breakpointCoefficient * vehicleMultiplier
 
@@ -109,16 +116,33 @@ export class PricingService implements OnModuleInit {
 					calculatedPrice = minimumFare
 				}
 
+				const translation =
+					vehicleType.translations.find(t => t.locale === locale) ||
+					vehicleType.translations[0]
+
 				return {
 					id: vehicleType.id,
 					code: vehicleType.code,
-					name: vehicleType.translations[0]?.name || vehicleType.code,
+					name: translation?.name || vehicleType.code,
 					price: parseFloat(calculatedPrice.toFixed(2)),
 					multiplier: vehicleMultiplier
 				}
 			})
 
-		return prices
+		let anyPrice = distanceInKm * pricePerKm
+		if (anyPrice < minimumFare) {
+			anyPrice = minimumFare
+		}
+
+		const anyPriceObject = {
+			id: 'ANY_VIRTUAL_ID',
+			code: 'ANY',
+			name: locale === 'uk' ? 'Будь-який' : 'Any',
+			price: parseFloat(anyPrice.toFixed(2)),
+			multiplier: 1.0
+		}
+
+		return [anyPriceObject, ...realTypePrices]
 	}
 
 	private async calculateBasePrice(
@@ -136,7 +160,7 @@ export class PricingService implements OnModuleInit {
 				}),
 				this.geoService.getDistanceAndDuration(dto.waypoints),
 				this.settings.get('GLOBAL_PRICE_PER_KM'),
-				this.settings.get('GLOBAL_MINIMUM_FARE')
+				this.settings.get('GLOBAL_MINIMUM_FARE') || this.GLOBAL_MINIMUM_FARE
 			])
 
 		if (
@@ -239,6 +263,7 @@ export class PricingService implements OnModuleInit {
 				return bp.coefficient.toNumber()
 			}
 		}
+
 		return breakpoints[breakpoints.length - 1].coefficient.toNumber()
 	}
 
@@ -275,6 +300,7 @@ export class PricingService implements OnModuleInit {
 			if (dbOption.code.startsWith('CHILD_')) {
 				return sum
 			}
+
 			const quantity = selectedOpt.quantity || 1
 			return sum + Number(dbOption.price) * quantity
 		}, 0)
