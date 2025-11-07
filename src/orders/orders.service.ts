@@ -1,16 +1,16 @@
-import { InjectQueue } from '@nestjs/bull'
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager' // 👈 ВИПРАВЛЕНО
 import {
 	BadRequestException,
 	ForbiddenException,
+	Inject,
 	Injectable,
+	InternalServerErrorException,
 	NotFoundException
 } from '@nestjs/common'
 import { OrderOption, Partner, Prisma } from '@prisma/client'
-import type { Queue } from 'bull'
 import { randomUUID } from 'crypto'
 import { GeoService } from 'src/geo/geo.service'
 import { NotificationsService } from 'src/notifications/notifications.service'
-import { CREATE_PAYMENT_JOB, PAYMENT_QUEUE } from 'src/payment/constants'
 import { PaymentService } from 'src/payment/payment.service'
 import { PricingService } from 'src/pricing/pricing.service'
 import { PrismaService } from 'src/prisma.service'
@@ -26,7 +26,8 @@ export class OrdersService {
 		private pricingService: PricingService,
 		private paymentService: PaymentService,
 		private notificationsService: NotificationsService,
-		@InjectQueue(PAYMENT_QUEUE) private paymentQueue: Queue
+		//@InjectQueue(PAYMENT_QUEUE) private paymentQueue: Queue
+		@Inject(CACHE_MANAGER) private cacheManager: Cache
 	) {}
 
 	async create(
@@ -243,24 +244,51 @@ export class OrdersService {
 			dto.isAvailableToAll ?? false
 		)
 
-		const clientJobId = randomUUID()
+		// ... (в кінці методу create)
+		const clientJobId = randomUUID() // Ми все ще генеруємо ID
 
-		await this.paymentQueue.add(
-			CREATE_PAYMENT_JOB,
-			{
-				amount: finalPrice,
-				currency: 'EUR',
-				orderDetails: dto,
-				clientId: clientId
-			},
-			{ jobId: clientJobId }
-		)
+		try {
+			// === ПРЯМИЙ ВИКЛИК СЕРВІСУ ПЛАТЕЖІВ ===
+			const paymentIntent = await this.paymentService.createPaymentIntent(
+				finalPrice,
+				'EUR',
+				dto,
+				clientId || '' // 👈 ВИПРАВЛЕНО
+			)
 
-		return {
-			jobId: clientJobId,
-			message: 'Payment creation has been queued.'
+			// Ми зберігаємо результат у кеш (який тепер у пам'яті),
+			// на випадок, якщо фронтенд все ж перевіряє ендпоінт /payment/job/:jobId
+			const cacheKey = `payment_job_${clientJobId}`
+			const cacheValue = {
+				status: 'completed',
+				clientSecret: paymentIntent.clientSecret,
+				amount: finalPrice
+			}
+			await this.cacheManager.set(cacheKey, cacheValue, 3600) // (кеш на 1 годину)
+
+			// Повертаємо clientSecret негайно фронтенду
+			return {
+				jobId: clientJobId,
+				...cacheValue
+			}
+		} catch (error) {
+			console.error('Failed to create payment intent synchronously:', error)
+
+			// Повідомляємо фронтенду про помилку через кеш
+			const cacheKey = `payment_job_${clientJobId}`
+			await this.cacheManager.set(
+				cacheKey,
+				{ status: 'failed', error: error?.message ?? String(error) },
+				3600
+			)
+
+			// Кидаємо помилку, щоб користувач отримав 500
+			throw new InternalServerErrorException(
+				`Failed to create payment intent: ${error.message}`
+			)
 		}
 	}
+	// ...
 
 	async findAll(dto: SearchOrderDto) {
 		const where: Prisma.OrderWhereInput = {}

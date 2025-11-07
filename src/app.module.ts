@@ -1,9 +1,8 @@
 import { CacheModule } from '@nestjs/cache-manager'
 import { Module } from '@nestjs/common'
-import { ConfigModule, ConfigService } from '@nestjs/config'
+import { ConfigModule } from '@nestjs/config'
 import { ScheduleModule } from '@nestjs/schedule'
 import { ThrottlerModule } from '@nestjs/throttler'
-import * as redisStore from 'cache-manager-redis-store'
 import { AcceptLanguageResolver, I18nJsonLoader, I18nModule } from 'nestjs-i18n'
 import * as path from 'path'
 import { AdminModule } from './admin/admin.module'
@@ -33,7 +32,7 @@ import { VehicleTypeModule } from './vehicle-type/vehicle-type.module'
 @Module({
 	imports: [
 		ScheduleModule.forRoot(),
-		CacheModule.registerAsync({
+		/*CacheModule.registerAsync({
 			isGlobal: true,
 			imports: [ConfigModule],
 			inject: [ConfigService],
@@ -42,6 +41,10 @@ import { VehicleTypeModule } from './vehicle-type/vehicle-type.module'
 				url: configService.get('REDIS_URL'),
 				ttl: 600
 			})
+		}),*/
+		CacheModule.register({
+			isGlobal: true,
+			ttl: 600
 		}),
 		ThrottlerModule.forRoot([
 			{

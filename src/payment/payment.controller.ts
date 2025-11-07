@@ -1,4 +1,3 @@
-import { InjectQueue } from '@nestjs/bull'
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager'
 import type { RawBodyRequest } from '@nestjs/common'
 import {
@@ -21,8 +20,7 @@ import Stripe from 'stripe'
 import { PaymentService } from './payment.service'
 
 import { SkipThrottle } from '@nestjs/throttler'
-import type { Queue } from 'bull'
-import { PAYMENT_QUEUE } from './constants'
+// import { PAYMENT_QUEUE } from './constants' // 👈 ВИДАЛІТЬ ЦЕЙ РЯДОК
 
 @ApiTags('Payment')
 @Controller('payment')
@@ -32,16 +30,15 @@ export class PaymentController {
 		private readonly ordersService: OrdersService,
 		private readonly pdfService: PdfService,
 		private readonly emailService: EmailService,
-		@Inject(CACHE_MANAGER) private cacheManager: Cache,
-		@InjectQueue(PAYMENT_QUEUE) private paymentQueue: Queue
+		@Inject(CACHE_MANAGER) private cacheManager: Cache
+		// 👈 Queue видалено
 	) {}
 
 	@Get('job/:jobId')
 	@ApiOperation({ summary: 'Check status of payment creation task' })
 	@ApiResponse({
 		status: 200,
-		description:
-			'Returns the status of the payment job from both cache (instant) and the queue (detailed).',
+		description: 'Returns the status of the payment job from cache (instant).',
 		schema: {
 			example: {
 				cache: {
@@ -49,22 +46,13 @@ export class PaymentController {
 					clientSecret: 'pi_3..._secret_...',
 					amount: 120.5
 				},
-				queue: {
-					id: 'your-job-id',
-					state: 'completed',
-					attempts: 1,
-					returnValue: {
-						status: 'completed',
-						clientSecret: 'pi_3..._secret_...',
-						amount: 120.5
-					}
-				}
+				queue: null
 			}
 		}
 	})
 	@ApiResponse({
 		status: 404,
-		description: 'Job ID not found in cache or queue.',
+		description: 'Job ID not found in cache.',
 		schema: {
 			example: {
 				cache: null,
@@ -74,21 +62,11 @@ export class PaymentController {
 	})
 	async inspectJob(@Param('jobId') jobId: string) {
 		const cacheKey = `payment_job_${jobId}`
-		const cache = await this.cacheManager.get(cacheKey)
-		const job = await this.paymentQueue.getJob(jobId)
-		if (!job) {
-			return { cache, queue: null }
-		}
-		const state = await job.getState()
-
-		let returnValue = null
-		try {
-			returnValue = await job.finished()
-		} catch (e) {}
+		const cacheResult = await this.cacheManager.get(cacheKey)
 
 		return {
-			cache,
-			queue: { id: job.id, state, attempts: job.attemptsMade, returnValue }
+			cache: cacheResult || null,
+			queue: null // Черга відключена
 		}
 	}
 
@@ -122,9 +100,10 @@ export class PaymentController {
 			const orderDetailsRaw = paymentIntent.metadata?.order_details
 			const clientId = paymentIntent.metadata?.client_id
 
-			if (!orderDetailsRaw || !clientId) {
+			if (!orderDetailsRaw) {
+				// 👈 ТРОХИ ЗМІНЕНО (clientId може бути порожнім)
 				console.warn(
-					`Missing order_details or client_id in metadata for PI: ${paymentIntent.id}`
+					`Missing order_details in metadata for PI: ${paymentIntent.id}`
 				)
 				return { received: true }
 			}
@@ -142,7 +121,7 @@ export class PaymentController {
 
 			try {
 				const newOrder = await this.ordersService.create(orderDetailsDto, {
-					clientId: clientId,
+					clientId: clientId || undefined, // 👈 ТРОХИ ЗМІНЕНО
 					paymentIntentId: paymentIntent.id
 				})
 

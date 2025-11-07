@@ -120,11 +120,13 @@ export class PricingService implements OnModuleInit {
 					vehicleType.translations.find(t => t.locale === locale) ||
 					vehicleType.translations[0]
 
+				const finalPrice = Math.ceil(calculatedPrice)
+
 				return {
 					id: vehicleType.id,
 					code: vehicleType.code,
 					name: translation?.name || vehicleType.code,
-					price: parseFloat(calculatedPrice.toFixed(2)),
+					price: finalPrice,
 					multiplier: vehicleMultiplier
 				}
 			})
@@ -133,13 +135,13 @@ export class PricingService implements OnModuleInit {
 		if (anyPrice < minimumFare) {
 			anyPrice = minimumFare
 		}
+		const finalAnyPrice = Math.ceil(anyPrice)
 
 		const anyPriceObject = {
 			id: 'ANY_VIRTUAL_ID',
 			code: 'ANY',
 			name: locale === 'uk' ? 'Будь-який' : 'Any',
-			price: parseFloat(anyPrice.toFixed(2)),
-			multiplier: 1.0
+			price: finalAnyPrice
 		}
 
 		return [anyPriceObject, ...realTypePrices]
@@ -247,7 +249,7 @@ export class PricingService implements OnModuleInit {
 			totalPrice *= 1 + markup / 100
 		}
 
-		return parseFloat(totalPrice.toFixed(2))
+		return Math.ceil(totalPrice)
 	}
 
 	private getCoefficient(
