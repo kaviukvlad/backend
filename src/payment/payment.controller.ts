@@ -64,7 +64,7 @@ export class PaymentController {
 
 		return {
 			cache: cacheResult || null,
-			queue: null // Черга відключена
+			queue: null
 		}
 	}
 
@@ -95,7 +95,6 @@ export class PaymentController {
 		if (event.type === 'payment_intent.succeeded') {
 			const paymentIntent = event.data.object as Stripe.PaymentIntent
 
-			// --- ПОЧАТОК НОВОЇ ЛОГІКИ ---
 			const metadata = paymentIntent.metadata
 			const clientId = metadata?.client_id
 			const chunkCount = metadata?.order_details_count
@@ -134,7 +133,7 @@ export class PaymentController {
 
 			try {
 				const newOrder = await this.ordersService.create(orderDetailsDto, {
-					clientId: clientId || undefined, // 👈 ТРОХИ ЗМІНЕНО
+					clientId: clientId || undefined,
 					paymentIntentId: paymentIntent.id
 				})
 
@@ -143,25 +142,27 @@ export class PaymentController {
 						`Successfully created order in DB (ID: ${newOrder.id}) for PI: ${paymentIntent.id}`
 					)
 
-					try {
-						const pdfBuffer = await this.pdfService.generateVoucher(
-							newOrder,
-							'en'
-						)
-						await this.emailService.sendVoucher(
-							newOrder.customerEmail!,
-							newOrder,
-							pdfBuffer
-						)
-						console.log(
-							`Successfully sent voucher to ${newOrder.customerEmail}`
-						)
-					} catch (emailError) {
-						console.error(
-							`FAILED TO SEND VOUCHER for order ${newOrder.id}`,
-							emailError
-						)
-					}
+					console.log('Voucher sending is temporarily disabled.')
+					/* try {
+            const pdfBuffer = await this.pdfService.generateVoucher(
+              newOrder,
+              'en'
+            )
+            await this.emailService.sendVoucher(
+              newOrder.customerEmail!,
+              newOrder,
+              pdfBuffer
+            )
+            console.log(
+              `Successfully sent voucher to ${newOrder.customerEmail}`
+            )
+          } catch (emailError) {
+            console.error(
+              `FAILED TO SEND VOUCHER for order ${newOrder.id}`,
+              emailError
+            )
+          }
+          */
 				} else {
 					console.error(
 						`Order creation for PI ${paymentIntent.id} returned a job ID instead of an order object.`,
