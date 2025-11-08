@@ -26,7 +26,7 @@ export class OrdersService {
 		private pricingService: PricingService,
 		private paymentService: PaymentService,
 		private notificationsService: NotificationsService,
-		//@InjectQueue(PAYMENT_QUEUE) private paymentQueue: Queue
+
 		@Inject(CACHE_MANAGER) private cacheManager: Cache
 	) {}
 
@@ -38,6 +38,24 @@ export class OrdersService {
 			paymentIntentId?: string
 		} = {}
 	) {
+		if (dto.vehicleTypeId === 'ANY_VIRTUAL_ID') {
+			console.warn('')
+
+			const standardType = await this.prisma.vehicleType.findUnique({
+				where: { code: 'STANDARD' },
+				select: { id: true }
+			})
+
+			if (!standardType) {
+				throw new InternalServerErrorException(
+					"STANDARD vehicle type code not found in database. Cannot process 'ANY' order."
+				)
+			}
+
+			dto.vehicleTypeId = standardType.id
+			dto.isAvailableToAll = true
+		}
+
 		const { clientId, paymentIntentId, partner } = options
 
 		const tripTime = new Date(dto.trip_datetime)
@@ -244,29 +262,24 @@ export class OrdersService {
 			dto.isAvailableToAll ?? false
 		)
 
-		// ... (в кінці методу create)
-		const clientJobId = randomUUID() // Ми все ще генеруємо ID
+		const clientJobId = randomUUID()
 
 		try {
-			// === ПРЯМИЙ ВИКЛИК СЕРВІСУ ПЛАТЕЖІВ ===
 			const paymentIntent = await this.paymentService.createPaymentIntent(
 				finalPrice,
 				'EUR',
 				dto,
-				clientId || '' // 👈 ВИПРАВЛЕНО
+				clientId || ''
 			)
 
-			// Ми зберігаємо результат у кеш (який тепер у пам'яті),
-			// на випадок, якщо фронтенд все ж перевіряє ендпоінт /payment/job/:jobId
 			const cacheKey = `payment_job_${clientJobId}`
 			const cacheValue = {
 				status: 'completed',
 				clientSecret: paymentIntent.clientSecret,
 				amount: finalPrice
 			}
-			await this.cacheManager.set(cacheKey, cacheValue, 3600) // (кеш на 1 годину)
+			await this.cacheManager.set(cacheKey, cacheValue, 3600)
 
-			// Повертаємо clientSecret негайно фронтенду
 			return {
 				jobId: clientJobId,
 				...cacheValue
@@ -274,7 +287,6 @@ export class OrdersService {
 		} catch (error) {
 			console.error('Failed to create payment intent synchronously:', error)
 
-			// Повідомляємо фронтенду про помилку через кеш
 			const cacheKey = `payment_job_${clientJobId}`
 			await this.cacheManager.set(
 				cacheKey,
@@ -282,13 +294,11 @@ export class OrdersService {
 				3600
 			)
 
-			// Кидаємо помилку, щоб користувач отримав 500
 			throw new InternalServerErrorException(
 				`Failed to create payment intent: ${error.message}`
 			)
 		}
 	}
-	// ...
 
 	async findAll(dto: SearchOrderDto) {
 		const where: Prisma.OrderWhereInput = {}
