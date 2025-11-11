@@ -174,6 +174,8 @@ export class PaymentController {
 					`ERROR creating order from webhook for PI: ${paymentIntent.id}`,
 					error
 				)
+
+				throw error
 			}
 		} else {
 			console.log(` Unhandled Stripe event type: ${event.type}`)
