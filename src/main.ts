@@ -32,7 +32,7 @@ async function bootstrap() {
 	app.setGlobalPrefix('api')
 	app.use(cookieParser())
 	app.enableCors({
-		origin: ['http://localhost:3000', 'http://take-transfer.com'],
+		origin: ['http://localhost:3000', 'http://take-transfer.com','http://www.take-transfer.com'],
 		credentials: true,
 		exposedHeaders: 'set-cookie'
 	})
