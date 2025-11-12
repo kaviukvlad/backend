@@ -35,7 +35,11 @@ async function bootstrap() {
     origin: [
       'http://localhost:3000', 
       'http://take-transfer.com',
-      'http://www.take-transfer.com'
+      'http://www.take-transfer.com',
+			'http://take-transfer.onrender.com',
+			'https://take-transfer.com',
+      'https://www.take-transfer.com',
+			'https://take-transfer.onrender.com'
     ],
     
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
