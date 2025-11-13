@@ -279,7 +279,7 @@ export class DriverController {
 	}
 
 	@Get('orders/available')
-	@Auth()
+	@Auth(UserRole.DRIVER, UserRole.OPERATOR)
 	@ApiOperation({ summary: 'Get list of available orders' })
 	@HttpCode(HttpStatus.OK)
 	@ApiResponse({
