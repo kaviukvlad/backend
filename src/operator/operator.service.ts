@@ -220,31 +220,36 @@ export class OperatorService {
 			}
 		})
 
-		if (!updatedOrder.customerEmail) {
-			console.warn(
-				`Order ${updatedOrder.id} reassigned, but no customerEmail to send new voucher.`
-			)
-			return updatedOrder
-		}
+		// 3. Перевіряємо email та надсилаємо новий ваучер
+    if (!updatedOrder.customerEmail) {
+      console.warn(
+        `Order ${updatedOrder.id} reassigned, but no customerEmail to send new voucher.`
+      )
+      return updatedOrder
+    }
 
-		try {
-			const pdfBuffer = await this.pdfService.generateVoucher(
-				updatedOrder,
-				'en'
-			)
+    // --- PDF ВІДКЛЮЧЕНО ---
+    console.log(
+      `Voucher generation is temporarily disabled for REASSIGNED order ${updatedOrder.id}.`
+    )
+    /*
+    try {
+      // Використовуємо 'en' (або іншу мову за замовчуванням)
+      const pdfBuffer = await this.pdfService.generateVoucher(updatedOrder, 'en')
+      
+      await this.emailService.sendVoucher(
+        updatedOrder.customerEmail,
+        updatedOrder,
+        pdfBuffer
+      )
+    } catch (error) {
+      console.error(
+        `Failed to send NEW VOUCHER for reassigned order ${updatedOrder.id}`,
+        error
+      )
+    }
+    */
+    // --- КІНЕЦЬ ВІДКЛЮЧЕНОГО БЛОКУ ---
 
-			await this.emailService.sendVoucher(
-				updatedOrder.customerEmail,
-				updatedOrder,
-				pdfBuffer
-			)
-		} catch (error) {
-			console.error(
-				`Failed to send NEW VOUCHER for reassigned order ${updatedOrder.id}`,
-				error
-			)
-		}
-
-		return updatedOrder
-	}
-}
+    return updatedOrder
+  }}

@@ -142,8 +142,10 @@ export class PaymentController {
 						`Successfully created order in DB (ID: ${newOrder.id}) for PI: ${paymentIntent.id}`
 					)
 
-					console.log('Voucher sending is temporarily disabled.')
-					try {
+				console.log(
+            `Voucher generation is temporarily disabled for order ${newOrder.id}.`
+          )
+				/*	try {
 						const pdfBuffer = await this.pdfService.generateVoucher(
 							newOrder,
 							'en'
@@ -161,7 +163,7 @@ export class PaymentController {
 							`FAILED TO SEND VOUCHER for order ${newOrder.id}`,
 							emailError
 						)
-					}
+					}*/
 				} else {
 					console.error(
 						`Order creation for PI ${paymentIntent.id} returned a job ID instead of an order object.`,
