@@ -221,18 +221,16 @@ export class OperatorService {
 		})
 
 		// 3. Перевіряємо email та надсилаємо новий ваучер
-    if (!updatedOrder.customerEmail) {
-      console.warn(
-        `Order ${updatedOrder.id} reassigned, but no customerEmail to send new voucher.`
-      )
-      return updatedOrder
-    }
+		if (!updatedOrder.customerEmail) {
+			console.warn(
+				`Order ${updatedOrder.id} reassigned, but no customerEmail to send new voucher.`
+			)
+			return updatedOrder
+		} // --- PDF ВІДКЛЮЧЕНО ---
 
-    // --- PDF ВІДКЛЮЧЕНО ---
-    console.log(
-      `Voucher generation is temporarily disabled for REASSIGNED order ${updatedOrder.id}.`
-    )
-    /*
+		console.log(
+			`Voucher generation is temporarily disabled for REASSIGNED order ${updatedOrder.id}.`
+		) /*
     try {
       // Використовуємо 'en' (або іншу мову за замовчуванням)
       const pdfBuffer = await this.pdfService.generateVoucher(updatedOrder, 'en')
@@ -248,8 +246,7 @@ export class OperatorService {
         error
       )
     }
-    */
-    // --- КІНЕЦЬ ВІДКЛЮЧЕНОГО БЛОКУ ---
-
-    return updatedOrder
-  }}
+    */ // --- КІНЕЦЬ ВІДКЛЮЧЕНОГО БЛОКУ ---
+		return updatedOrder
+	}
+}

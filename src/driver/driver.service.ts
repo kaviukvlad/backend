@@ -419,8 +419,8 @@ export class DriverService {
 			}
 		})
 
-		const suitableOrders = ordersInRegion.filter(order => {
-			;(order: OrderWithSelectedOptions) => {
+		const suitableOrders = ordersInRegion.filter(
+			(order: OrderWithSelectedOptions) => {
 				const carCapacityFits =
 					driverProfile.cars.some((car: CarWithAvailableOptions) => {
 						const capacityOk =
@@ -441,6 +441,7 @@ export class DriverService {
 							return carHasQuantity >= reqOpt.quantity
 						})
 					}) || isOperator
+
 				if (!carCapacityFits) return false
 
 				if (order.isAvailableToAll) {
@@ -457,7 +458,7 @@ export class DriverService {
 
 				return allowedVehicleTypeIds.includes(order.vehicleTypeId)
 			}
-		})
+		)
 
 		const ordersWithEarnings = await Promise.all(
 			suitableOrders.map(async order => {

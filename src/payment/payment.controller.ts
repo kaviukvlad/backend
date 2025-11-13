@@ -142,10 +142,10 @@ export class PaymentController {
 						`Successfully created order in DB (ID: ${newOrder.id}) for PI: ${paymentIntent.id}`
 					)
 
-				console.log(
-            `Voucher generation is temporarily disabled for order ${newOrder.id}.`
-          )
-				/*	try {
+					console.log(
+						`Voucher generation is temporarily disabled for order ${newOrder.id}.`
+					)
+					/*	try {
 						const pdfBuffer = await this.pdfService.generateVoucher(
 							newOrder,
 							'en'
