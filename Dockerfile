@@ -36,11 +36,26 @@ ENV PATH="$PNPM_HOME:$PATH"
 WORKDIR /app
 
 
-RUN npm install -g pnpm
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    libgbm
 
+
+
+RUN npm install -g pnpm
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup && chown -R appuser:appgroup /app
 USER appuser
+
+
+
+
+
 
 
 COPY --chown=appuser:appgroup --from=builder_stage /app/prisma ./prisma
