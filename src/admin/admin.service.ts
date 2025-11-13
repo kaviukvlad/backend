@@ -1,13 +1,21 @@
 import {
+	BadRequestException,
 	ConflictException,
 	Injectable,
 	NotFoundException
 } from '@nestjs/common'
-import { DocumentStatus, VehicleVerificationStatus } from '@prisma/client'
+import {
+	DocumentStatus,
+	Prisma,
+	VehicleVerificationStatus
+} from '@prisma/client'
 import { hash } from 'argon2'
 import { PrismaService } from 'src/prisma.service'
+import { BlockDriverDto } from './dto/block-driver.dto'
 import { CreateBreakpointDto } from './dto/create-breakpoint.dto'
+import { CreateDriverByAdminDto } from './dto/create-driver-by-admin.dto'
 import { CreateOperatorDto } from './dto/create-operator.dto'
+import { UpdateCarStatusDto } from './dto/update-car-status.dto'
 import { UpdateDriverCommissionDto } from './dto/update-driver-commission.dto'
 import { UpdateDriverVehicleTypesDto } from './dto/update-driver-vehicle-types.dto'
 
@@ -82,14 +90,33 @@ export class AdminService {
 
 	async updateCarStatus(
 		carId: string,
-		status: VehicleVerificationStatus,
+		dto: UpdateCarStatusDto,
 		adminUserId: string
 	) {
 		const adminProfile = await this.findAdminProfile(adminUserId)
+		const { status, vehicleTypeId } = dto
 
+		const dataToUpdate: Prisma.CarUpdateInput = {
+			verification_status: status
+		}
+
+		if (status === VehicleVerificationStatus.APPROVED) {
+			if (!vehicleTypeId) {
+				throw new BadRequestException(
+					'VehicleTypeID is required to approve a car.'
+				)
+			}
+			dataToUpdate.vehicle_type = {
+				connect: { id: vehicleTypeId }
+			}
+		} else if (status === VehicleVerificationStatus.REJECTED) {
+			dataToUpdate.vehicle_type = {
+				disconnect: true
+			}
+		}
 		const updatedCar = await this.prisma.car.update({
 			where: { id: carId },
-			data: { verification_status: status }
+			data: dataToUpdate
 		})
 
 		await this.prisma.auditLog.create({
@@ -273,6 +300,72 @@ export class AdminService {
 	async deleteBreakpoint(id: string) {
 		return this.prisma.distanceBreakpoint.delete({
 			where: { id }
+		})
+	}
+
+	async createDriver(dto: CreateDriverByAdminDto) {
+		const existingUserByEmail = await this.prisma.user.findUnique({
+			where: { email: dto.email }
+		})
+		if (existingUserByEmail) {
+			throw new ConflictException('User with this email already exists.')
+		}
+
+		const existingUserByPhone = await this.prisma.user.findUnique({
+			where: { phone: dto.phone }
+		})
+		if (existingUserByPhone) {
+			throw new ConflictException('User with this phone number already exists.')
+		}
+
+		const hashedPassword = await hash(dto.password)
+
+		return this.prisma.$transaction(async tx => {
+			const newUser = await tx.user.create({
+				data: {
+					email: dto.email,
+					phone: dto.phone,
+					password: hashedPassword,
+					role: 'DRIVER'
+				}
+			})
+
+			await tx.driverProfile.create({
+				data: {
+					userId: newUser.id,
+					name: dto.name,
+					regionId: dto.regionId,
+					status: 1
+				}
+			})
+
+			const { password, ...userResult } = newUser
+			return userResult
+		})
+	}
+
+	async blockDriver(driverId: string, dto: BlockDriverDto) {
+		const driver = await this.prisma.driverProfile.findUnique({
+			where: { id: driverId }
+		})
+
+		if (!driver) {
+			throw new NotFoundException(
+				`Driver profile with ID ${driverId} not found.`
+			)
+		}
+
+		return this.prisma.driverProfile.update({
+			where: { id: driverId },
+			data: {
+				isBlocked: dto.isBlocked
+			},
+			select: {
+				id: true,
+				name: true,
+				isBlocked: true,
+				status: true
+			}
 		})
 	}
 }

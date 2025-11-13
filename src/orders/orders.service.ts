@@ -1,4 +1,4 @@
-import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager' // 👈 ВИПРАВЛЕНО
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
 import {
 	BadRequestException,
 	ForbiddenException,
@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common'
 import { OrderOption, Partner, Prisma } from '@prisma/client'
 import { randomUUID } from 'crypto'
+import * as Papa from 'papaparse'
 import { GeoService } from 'src/geo/geo.service'
 import { NotificationsService } from 'src/notifications/notifications.service'
 import { PaymentService } from 'src/payment/payment.service'
@@ -99,7 +100,7 @@ export class OrdersService {
 			)
 		}
 
-		if (vehicleType.code === 'BUS') {
+		if (vehicleType.code === 'BUS' || dto.isManualCreation) {
 			const { distanceInKm, durationInMinutes } =
 				await this.geoService.getDistanceAndDuration(dto.waypoints)
 
@@ -111,7 +112,7 @@ export class OrdersService {
 					})
 				: []
 
-			const busOrder = await this.prisma.order.create({
+			const manualOrder = await this.prisma.order.create({
 				data: {
 					routeWaypoints: dto.waypoints as any,
 					customerEmail: dto.customerEmail,
@@ -144,8 +145,12 @@ export class OrdersService {
 					}
 				}
 			})
-			await this.notificationsService.sendBusOrderNotification(busOrder)
-			return busOrder
+
+			if (vehicleType.code === 'BUS') {
+				await this.notificationsService.sendBusOrderNotification(manualOrder)
+			}
+
+			return manualOrder
 		}
 
 		if (paymentIntentId) {
@@ -343,7 +348,17 @@ export class OrdersService {
 					}
 				},
 				driver: true,
-				region: true
+				region: true,
+				vehicleType: {
+					select: {
+						code: true,
+						translations: {
+							where: {
+								locale: 'en'
+							}
+						}
+					}
+				}
 			}
 		})
 	}
@@ -427,7 +442,9 @@ export class OrdersService {
 		let finalPrice = order.price.toNumber()
 		let optionsFromDb: OrderOption[] = []
 
-		if (dto.selectedOptions || dto.vehicleTypeId) {
+		if (dto.price !== undefined && dto.price !== null) {
+			finalPrice = dto.price
+		} else if (dto.selectedOptions || dto.vehicleTypeId) {
 			const dataForPricing: CreateOrderDto = {
 				selectedOptions:
 					dto.selectedOptions ??
@@ -459,13 +476,7 @@ export class OrdersService {
 		}
 
 		return this.prisma.$transaction(async tx => {
-			if (dto.selectedOptions) {
-				await tx.orderToOption.deleteMany({
-					where: { orderId: id }
-				})
-			}
-
-			const { selectedOptions, waypoints, ...restDto } = dto
+			const { selectedOptions, waypoints, price, ...restDto } = dto
 
 			const updatedOrder = await tx.order.update({
 				where: { id },
@@ -565,8 +576,35 @@ export class OrdersService {
 			throw new BadRequestException('Це замовлення вже неможливо скасувати.')
 		}
 
+		const completedCount = await this.prisma.order.count({
+			where: { clientId: clientId, status: 'COMPLETED' }
+		})
+		const cancelledCount = await this.prisma.order.count({
+			where: { clientId: clientId, status: 'CANCELLED' }
+		})
+
+		if (completedCount < (cancelledCount + 1) * 10) {
+			throw new ForbiddenException(
+				`Ліміт скасувань перевищено. Дозволено 1 скасування на кожні 10 виконаних замовлень. (У вас ${completedCount} виконаних та ${cancelledCount} скасованих).`
+			)
+		}
+
 		if (order.paymentIntentId) {
-			await this.paymentService.createRefund(order.paymentIntentId)
+			const hoursUntilTrip =
+				(new Date(order.trip_datetime).getTime() - Date.now()) /
+				(1000 * 60 * 60)
+
+			if (hoursUntilTrip >= 24) {
+				await this.paymentService.createRefund(order.paymentIntentId)
+			} else {
+				const refundAmount = order.price.toNumber() * 0.7
+				const refundAmountInCents = Math.round(refundAmount * 100)
+
+				await this.paymentService.createRefund(
+					order.paymentIntentId,
+					refundAmountInCents
+				)
+			}
 		}
 
 		return this.prisma.order.update({
@@ -602,5 +640,40 @@ export class OrdersService {
 		}
 
 		return order
+	}
+
+	async exportOrders(dto: SearchOrderDto): Promise<string> {
+		const orders = await this.findAll(dto)
+
+		if (orders.length === 0) {
+			return 'No orders found for the selected criteria.'
+		}
+
+		const flattenedData = orders.map(order => {
+			const orderWithType = order as any
+
+			return {
+				'Order ID': order.id,
+				'Booking Code': order.bookingCode,
+				Status: order.status,
+				'Trip Date (UTC)': order.trip_datetime.toISOString(),
+				'Customer Email': order.customerEmail,
+				Price: order.price.toNumber(),
+				Currency: order.currency,
+				'Driver Name': order.driver?.name || 'N/A',
+				Region: order.region?.name || 'N/A',
+				'Vehicle Class': orderWithType.vehicleType?.code || 'N/A',
+				'Vehicle Class Name (en)':
+					orderWithType.vehicleType?.translations[0]?.name || 'N/A',
+				Options:
+					order.selectedOptions
+						.map(opt => `${opt.option.name} (x${opt.quantity})`)
+						.join(' | ') || 'None',
+				'Flight Number': order.flight_number || '',
+				Notes: order.notes || ''
+			}
+		})
+
+		return Papa.unparse(flattenedData)
 	}
 }

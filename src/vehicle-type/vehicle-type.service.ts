@@ -41,10 +41,7 @@ export class VehicleTypeService {
 				id: vt.id,
 				code: vt.code,
 				name: translations?.name || vt.code,
-				priceMultiplier: vt.priceMultiplier.toNumber(),
-				max_passengers: vt.max_passengers,
-				max_luggage_standard: vt.max_luggage_standard,
-				max_luggage_small: vt.max_luggage_small
+				priceMultiplier: vt.priceMultiplier.toNumber()
 			}
 		})
 
@@ -52,11 +49,12 @@ export class VehicleTypeService {
 
 		if (standardType) {
 			const anyType = {
-				...standardType,
 				id: 'ANY_VIRTUAL_ID',
 				code: 'ANY',
 				name: locale === 'uk' ? 'Будь-який' : 'Any',
-				priceMultiplier: 1.0
+				priceMultiplier: 1.0,
+				max_passengers: 3,
+				max_luggage_standard: 2
 			}
 
 			return [anyType, ...mappedTypes]

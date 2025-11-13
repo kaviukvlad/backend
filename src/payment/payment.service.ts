@@ -81,7 +81,7 @@ export class PaymentService {
 		}
 	}
 
-	async createRefund(paymentIntentId: string) {
+	async createRefund(paymentIntentId: string, amountInCents?: number) {
 		try {
 			const paymentIntent =
 				await this.stripe.paymentIntents.retrieve(paymentIntentId)
@@ -90,9 +90,31 @@ export class PaymentService {
 				throw new Error('No chargeback found for this payment.')
 			}
 
-			const refund = await this.stripe.refunds.create({
+			const refundOptions: Stripe.RefundCreateParams = {
 				charge: paymentIntent.latest_charge as string
-			})
+			}
+
+			if (amountInCents !== undefined && amountInCents !== null) {
+				if (amountInCents < 0) {
+					throw new BadRequestException('Refund amount cannot be negative.')
+				}
+
+				if (amountInCents > paymentIntent.amount) {
+					console.warn(
+						`Refund amount ${amountInCents} exceeds charge ${paymentIntent.amount}. Clamping to max.`
+					)
+					refundOptions.amount = paymentIntent.amount
+				} else if (amountInCents > 0) {
+					refundOptions.amount = amountInCents
+				} else {
+					console.log(
+						`Refund amount is 0 for ${paymentIntentId}. Skipping refund creation.`
+					)
+					return null
+				}
+			}
+
+			const refund = await this.stripe.refunds.create(refundOptions)
 
 			console.log(`Successfully created refund: ${refund.id}`)
 			return refund

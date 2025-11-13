@@ -32,25 +32,10 @@ async function bootstrap() {
 	app.setGlobalPrefix('api')
 	app.use(cookieParser())
 	app.enableCors({
-    origin: [
-      'http://localhost:3000', 
-      'http://take-transfer.com',
-      'http://www.take-transfer.com',
-			'http://take-transfer.onrender.com',
-			'https://take-transfer.com',
-      'https://www.take-transfer.com',
-			'https://take-transfer.onrender.com'
-    ],
-    
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    
-    
-    allowedHeaders: 'Content-Type, Authorization, X-Requested-With', 
-    
-    credentials: true,
-    exposedHeaders: 'set-cookie',
-    optionsSuccessStatus: 204 
-  })
+		origin: ['http://localhost:3000'],
+		credentials: true,
+		exposedHeaders: 'set-cookie'
+	})
 
 	app.useGlobalPipes(
 		new ValidationPipe({

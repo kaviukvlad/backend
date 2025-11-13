@@ -34,6 +34,10 @@ import { CurrentDriver } from 'src/auth/decorators/driver.decorators'
 import { CreateCarDto } from 'src/car/dto/create-car.dto'
 import { UpdateCarDto } from 'src/car/dto/update-car.dto'
 import { DriverService } from './driver.service'
+import { CancelOrderDriverDto } from './dto/cancel-order-driver.dto'
+import { ChangeRequestDto } from './dto/change-request.dto'
+import { GeoCoordinatesDto } from './dto/geo-coordinates.dto'
+import { SetCarOptionsDto } from './dto/set-car-options.dto'
 import { UpdateDriverDto } from './dto/update-driver.dto'
 
 export const multerStorageOptions = (folder: string) =>
@@ -91,7 +95,8 @@ export class DriverController {
 				rating: 5.0,
 				status: 1,
 				commissionPercent: '15.00',
-				region: { id: 'clwtrjfuq000111a9f1a2g8f1', name: 'Paris' /* ... */ },
+				balance: '120.50',
+				region: { id: 'clwtrjfuq000111a9f1a2g8f1', name: 'Paris' },
 				cars: [{ id: 'car_id_1', brand: 'Mercedes-Benz', model: 'E-Class' }]
 			}
 		}
@@ -288,7 +293,7 @@ export class DriverController {
 					regionId: 'clwtrjfuq000411a9f1a2g8f1',
 					vehicleTypeId: 'clwtrgq5n000011a9d7z7f9c3',
 					status: 'NEW',
-					price: 65.0,
+
 					trip_datetime: '2025-11-05T10:00:00.000Z',
 					passenger_count: 2,
 					routeWaypoints: [
@@ -368,7 +373,7 @@ export class DriverController {
 				{
 					id: 'clwvoqj5o000211a9g74h3z7r',
 					status: 'ACCEPTED',
-					price: 95.0,
+
 					trip_datetime: '2025-11-04T16:00:00.000Z',
 					priceForDriver: 76.0
 				}
@@ -395,7 +400,7 @@ export class DriverController {
 				{
 					id: 'clwvoqj5o000211a9g74h3z7r',
 					status: 'COMPLETED',
-					price: 120.5,
+
 					trip_datetime: '2025-10-30T14:30:00.000Z',
 					priceForDriver: 102.42
 				}
@@ -429,9 +434,10 @@ export class DriverController {
 	@HttpCode(HttpStatus.OK)
 	async completeOrder(
 		@CurrentDriver('id') driverId: string,
-		@Param('id') orderId: string
+		@Param('id') orderId: string,
+		@Body() dto: GeoCoordinatesDto
 	) {
-		return this.driverService.completeOrder(driverId, orderId)
+		return this.driverService.completeOrder(driverId, orderId, dto)
 	}
 
 	@Get('earnings')
@@ -471,9 +477,15 @@ export class DriverController {
 	})
 	async setArrived(
 		@CurrentDriver('id') driverId: string,
-		@Param('id') orderId: string
+		@Param('id') orderId: string,
+		@Body() dto: GeoCoordinatesDto
 	) {
-		return this.driverService.updateOrderStatus(driverId, orderId, 'ARRIVED')
+		return this.driverService.updateOrderStatus(
+			driverId,
+			orderId,
+			'ARRIVED',
+			dto
+		)
 	}
 
 	@Post('orders/:id/no-show')
@@ -485,15 +497,155 @@ export class DriverController {
 		})
 	)
 	@ApiOperation({ summary: 'Report that the client did not show up' })
+	@ApiConsumes('multipart/form-data')
+	@ApiBody({
+		schema: {
+			type: 'object',
+			properties: {
+				photo: {
+					type: 'string',
+					format: 'binary',
+					description: 'A photo proof (e.g., car at the pickup location).'
+				},
+				lat: { type: 'number', example: 49.8397 },
+				lng: { type: 'number', example: 24.0297 },
+				force: { type: 'boolean', example: false }
+			},
+			required: ['photo', 'lat', 'lng']
+		}
+	})
 	async reportClientNoShow(
 		@CurrentDriver('id') driverId: string,
 		@Param('id') orderId: string,
-		@UploadedFile() photo: Express.Multer.File
+		@UploadedFile() photo: Express.Multer.File,
+		@Body() dto: GeoCoordinatesDto
 	) {
 		if (!photo) {
 			throw new BadRequestException('A photo proof is required.')
 		}
 
-		return this.driverService.reportClientNoShow(driverId, orderId, photo.path)
+		return this.driverService.reportClientNoShow(
+			driverId,
+			orderId,
+			photo.path,
+			dto
+		)
+	}
+
+	@Post('orders/:id/cancel')
+	@Auth()
+	@ApiOperation({ summary: 'Cancel an accepted order (48h rule)' })
+	@ApiConsumes('multipart/form-data')
+	@ApiBody({
+		description: 'Reason for cancellation and an optional proof photo.',
+		schema: {
+			type: 'object',
+			properties: {
+				reason: {
+					type: 'string',
+					example: 'Client requested cancellation.'
+				},
+				photo: {
+					type: 'string',
+					format: 'binary',
+					nullable: true
+				}
+			},
+			required: ['reason']
+		}
+	})
+	@UseInterceptors(
+		FileInterceptor('photo', {
+			storage: multerStorageOptions('proofs'),
+			fileFilter: imageFileFilter
+		})
+	)
+	async cancelOrder(
+		@CurrentDriver('id') driverId: string,
+		@Param('id') orderId: string,
+		@Body() dto: CancelOrderDriverDto,
+		@UploadedFile() photo?: Express.Multer.File
+	) {
+		if (!dto.reason) {
+			throw new BadRequestException('Reason is required.')
+		}
+
+		const photoPath = photo ? photo.path : undefined
+
+		return this.driverService.cancelOrder(
+			driverId,
+			orderId,
+			dto.reason,
+			photoPath
+		)
+	}
+
+	@Post('orders/:id/request-change')
+	@Auth()
+	@ApiOperation({ summary: 'Request a change to an order (e.g., new route)' })
+	@ApiResponse({
+		status: 200,
+		description: 'Request successfully submitted.',
+		schema: {
+			example: {
+				message: 'Change request submitted. Operator will contact you.'
+			}
+		}
+	})
+	async requestChange(
+		@CurrentDriver('id') driverId: string,
+		@Param('id') orderId: string,
+		@Body() dto: ChangeRequestDto
+	) {
+		return this.driverService.requestChange(driverId, orderId, dto.comment)
+	}
+
+	@Get('support-contact')
+	@Auth()
+	@ApiOperation({ summary: 'Get support service phone number' })
+	@ApiResponse({
+		status: 200,
+		description: 'Support phone number.',
+		schema: {
+			example: {
+				phone: '+380931234567'
+			}
+		}
+	})
+	async getSupportContact() {
+		return this.driverService.getSupportContact()
+	}
+
+	@Get('cars/:id/options')
+	@Auth()
+	@ApiOperation({ summary: 'Get available options for a specific car' })
+	@ApiParam({ name: 'id', description: 'Car ID' })
+	@ApiResponse({
+		status: 200,
+		description: 'List of options configured for this car.'
+	})
+	async getCarOptions(
+		@CurrentDriver('id') driverId: string,
+		@Param('id') carId: string
+	) {
+		return this.driverService.getCarOptions(driverId, carId)
+	}
+
+	@Post('cars/:id/options')
+	@Auth()
+	@ApiOperation({
+		summary: 'Set (overwrite) all options for a specific car'
+	})
+	@ApiParam({ name: 'id', description: 'Car ID' })
+	@ApiResponse({
+		status: 200,
+		description: 'Options updated, returns new list of options.'
+	})
+	async setCarOptions(
+		@CurrentDriver('id') driverId: string,
+		@Param('id') carId: string,
+		@Body() dto: SetCarOptionsDto
+	) {
+		return this.driverService.setCarOptions(driverId, carId, dto)
 	}
 }

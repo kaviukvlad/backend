@@ -55,10 +55,18 @@ export class CreateCarDto {
 	license_plate: string
 
 	@ApiProperty({
-		description: 'Vehicle type ID (e.g. "Standard", "Business")',
-		example: 'clqj9v1p20000umc0a1b2c3d4'
+		description: 'Max passenger capacity',
+		example: 4,
+		minimum: 1
 	})
-	@IsString()
-	@IsNotEmpty()
-	vehicle_type_id: string
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	max_passengers: number
+
+	@ApiProperty({ description: 'Max standard luggage', example: 2, minimum: 0 })
+	@Type(() => Number)
+	@IsInt()
+	@Min(0)
+	max_luggage_standard: number
 }

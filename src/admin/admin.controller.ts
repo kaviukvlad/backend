@@ -18,7 +18,9 @@ import {
 import { UserRole } from '@prisma/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { AdminService } from './admin.service'
+import { BlockDriverDto } from './dto/block-driver.dto'
 import { CreateBreakpointDto } from './dto/create-breakpoint.dto'
+import { CreateDriverByAdminDto } from './dto/create-driver-by-admin.dto'
 import { CreateOperatorDto } from './dto/create-operator.dto'
 import { UpdateCarStatusDto } from './dto/update-car-status.dto'
 import { UpdateDocumentStatusDto } from './dto/update-document-status.dto'
@@ -143,7 +145,7 @@ export class AdminController {
 			}
 		}
 	})
-	@Auth(UserRole.ADMIN)
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
 	async getUserById(@Param('id') id: string) {
 		return this.adminService.getUserById(id)
 	}
@@ -262,7 +264,7 @@ export class AdminController {
 		@Request() req
 	) {
 		const adminUserId = req.user.id
-		return this.adminService.updateCarStatus(carId, dto.status, adminUserId)
+		return this.adminService.updateCarStatus(carId, dto, adminUserId)
 	}
 
 	@Get('documents/pending')
@@ -311,7 +313,7 @@ export class AdminController {
 		description: 'Document status updated successfully.'
 	})
 	@ApiResponse({ status: 404, description: 'Document not found.' })
-	@Auth(UserRole.ADMIN)
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
 	async verifyDocument(
 		@Param('id') documentId: string,
 		@Body() dto: UpdateDocumentStatusDto,
@@ -353,6 +355,7 @@ export class AdminController {
 	}
 
 	@Get('regions/:regionId/breakpoints')
+	@Auth(UserRole.ADMIN)
 	@ApiOperation({ summary: 'Get all breakpoints for the region' })
 	@ApiResponse({
 		status: 200,
@@ -393,5 +396,35 @@ export class AdminController {
 	@Auth(UserRole.ADMIN)
 	deleteBreakpoint(@Param('id') id: string) {
 		return this.adminService.deleteBreakpoint(id)
+	}
+
+	@Post('drivers')
+	@ApiOperation({ summary: 'Create a new driver (for Admin/Operator)' })
+	@ApiResponse({
+		status: 201,
+		description: 'Driver created successfully.'
+	})
+	@ApiResponse({
+		status: 409,
+		description: 'User with this email or phone already exists.'
+	})
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
+	createDriver(@Body() dto: CreateDriverByAdminDto) {
+		return this.adminService.createDriver(dto)
+	}
+
+	@Patch('drivers/:id/block')
+	@ApiOperation({ summary: 'Block or unblock a driver (Superadmin only)' })
+	@ApiResponse({
+		status: 200,
+		description: 'Driver block status updated.'
+	})
+	@ApiResponse({
+		status: 404,
+		description: 'Driver profile not found.'
+	})
+	@Auth(UserRole.ADMIN)
+	blockDriver(@Param('id') driverId: string, @Body() dto: BlockDriverDto) {
+		return this.adminService.blockDriver(driverId, dto)
 	}
 }

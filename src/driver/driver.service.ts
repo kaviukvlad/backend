@@ -11,7 +11,21 @@ import { UpdateCarDto } from 'src/car/dto/update-car.dto'
 import { NotificationsService } from 'src/notifications/notifications.service'
 import { PricingService } from 'src/pricing/pricing.service'
 import { PrismaService } from 'src/prisma.service'
+import { GeoCoordinatesDto } from './dto/geo-coordinates.dto'
+import { SetCarOptionsDto } from './dto/set-car-options.dto'
 import { UpdateDriverDto } from './dto/update-driver.dto'
+
+type CarWithAvailableOptions = Prisma.CarGetPayload<{
+	include: {
+		availableOptions: true
+	}
+}>
+
+type OrderWithSelectedOptions = Prisma.OrderGetPayload<{
+	include: {
+		selectedOptions: true
+	}
+}>
 
 @Injectable()
 export class DriverService {
@@ -20,6 +34,25 @@ export class DriverService {
 		private pricingService: PricingService,
 		private notificationsService: NotificationsService
 	) {}
+
+	private calculateDistance(
+		lat1: number,
+		lon1: number,
+		lat2: number,
+		lon2: number
+	): number {
+		const R = 6371
+		const dLat = (lat2 - lat1) * (Math.PI / 180)
+		const dLon = (lon2 - lon1) * (Math.PI / 180)
+		const a =
+			Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+			Math.cos(lat1 * (Math.PI / 180)) *
+				Math.cos(lat2 * (Math.PI / 180)) *
+				Math.sin(dLon / 2) *
+				Math.sin(dLon / 2)
+		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+		return R * c
+	}
 
 	private async calculateDriverEarnings(
 		orderPrice: number,
@@ -99,7 +132,7 @@ export class DriverService {
 	}
 
 	async addCar(driverId: string, dto: CreateCarDto) {
-		const { vehicle_type_id, ...rest } = dto
+		const { ...rest } = dto
 
 		try {
 			const newCar = await this.prisma.car.create({
@@ -107,9 +140,6 @@ export class DriverService {
 					...rest,
 					driver: {
 						connect: { id: driverId }
-					},
-					vehicle_type: {
-						connect: { id: vehicle_type_id }
 					}
 				}
 			})
@@ -134,16 +164,10 @@ export class DriverService {
 			throw new ForbiddenException('You do not own this car')
 		}
 
-		const { vehicle_type_id, ...restOfDto } = dto
+		const { ...restOfDto } = dto
 
 		const dataToUpdate: Prisma.CarUpdateInput = {
 			...restOfDto
-		}
-
-		if (vehicle_type_id) {
-			dataToUpdate.vehicle_type = {
-				connect: { id: vehicle_type_id }
-			}
 		}
 
 		return this.prisma.car.update({
@@ -231,6 +255,14 @@ export class DriverService {
 			if (!driverProfile || driverProfile.status !== 1) {
 				throw new ForbiddenException('Your profile is not approved.')
 			}
+
+			if (driverProfile.isBlocked) {
+				throw new ForbiddenException('Your account has been blocked.')
+			}
+			if (driverProfile.status !== 1) {
+				throw new ForbiddenException('Your profile is not approved.')
+			}
+
 			const isOperator = driverProfile.user.role === 'OPERATOR'
 			let carToAssignId: string | null = null
 
@@ -334,7 +366,8 @@ export class DriverService {
 						verification_status: 'APPROVED'
 					},
 					include: {
-						vehicle_type: true
+						vehicle_type: true,
+						availableOptions: true
 					}
 				},
 				allowedVehicleTypes: {
@@ -348,6 +381,11 @@ export class DriverService {
 		if (!driverProfile) {
 			throw new NotFoundException('Driver profile not found.')
 		}
+
+		if (driverProfile.isBlocked) {
+			throw new ForbiddenException('Your account has been blocked.')
+		}
+
 		if (driverProfile.status !== 1) {
 			throw new ForbiddenException(
 				'Your profile has not yet been approved by the administrator.'
@@ -376,32 +414,49 @@ export class DriverService {
 				trip_datetime: 'asc'
 			},
 			include: {
-				vehicleType: { select: { code: true } }
+				vehicleType: { select: { code: true } },
+				selectedOptions: true
 			}
 		})
 
 		const suitableOrders = ordersInRegion.filter(order => {
-			const luggageFits =
-				driverProfile.cars.some(
-					car =>
-						car.vehicle_type.max_luggage_standard >=
-							(order.luggage_standard || 0) &&
-						car.vehicle_type.max_luggage_small >= (order.luggage_small || 0)
-				) || isOperator
-			if (!luggageFits) return false
+			;(order: OrderWithSelectedOptions) => {
+				const carCapacityFits =
+					driverProfile.cars.some((car: CarWithAvailableOptions) => {
+						const capacityOk =
+							car.max_passengers >= order.passenger_count &&
+							car.max_luggage_standard >= (order.luggage_standard || 0)
 
-			if (order.isAvailableToAll) {
-				return true
+						if (!capacityOk) return false
+
+						const requiredOptions = order.selectedOptions
+						if (requiredOptions.length === 0) return true
+
+						const carOptionsMap = new Map(
+							car.availableOptions.map(opt => [opt.optionId, opt.quantity])
+						)
+
+						return requiredOptions.every(reqOpt => {
+							const carHasQuantity = carOptionsMap.get(reqOpt.optionId) || 0
+							return carHasQuantity >= reqOpt.quantity
+						})
+					}) || isOperator
+				if (!carCapacityFits) return false
+
+				if (order.isAvailableToAll) {
+					return true
+				}
+
+				if (isOperator) {
+					return true
+				}
+
+				const allowedVehicleTypeIds = driverProfile.allowedVehicleTypes.map(
+					vt => vt.id
+				)
+
+				return allowedVehicleTypeIds.includes(order.vehicleTypeId)
 			}
-
-			if (isOperator) {
-				return true
-			}
-
-			const allowedVehicleTypeIds = driverProfile.allowedVehicleTypes.map(
-				vt => vt.id
-			)
-			return allowedVehicleTypeIds.includes(order.vehicleTypeId)
 		})
 
 		const ordersWithEarnings = await Promise.all(
@@ -410,7 +465,9 @@ export class DriverService {
 					order.price.toNumber(),
 					driverId
 				)
-				return { ...order, priceForDriver }
+
+				const { price, ...restOfOrder } = order
+				return { ...restOfOrder, priceForDriver }
 			})
 		)
 
@@ -444,13 +501,15 @@ export class DriverService {
 		})
 
 		return Promise.all(
-			order.map(async order => ({
-				...order,
-				priceForDriver: await this.calculateDriverEarnings(
+			order.map(async order => {
+				const priceForDriver = await this.calculateDriverEarnings(
 					order.price.toNumber(),
 					driverId
 				)
-			}))
+
+				const { price, ...restOfOrder } = order
+				return { ...restOfOrder, priceForDriver }
+			})
 		)
 	}
 
@@ -491,7 +550,11 @@ export class DriverService {
 		})
 	}
 
-	async completeOrder(driverId: string, orderId: string) {
+	async completeOrder(
+		driverId: string,
+		orderId: string,
+		dto: GeoCoordinatesDto
+	) {
 		const order = await this.verifyOrderOwnership(driverId, orderId)
 
 		if (order.status !== 'IN_PROGRESS') {
@@ -500,10 +563,28 @@ export class DriverService {
 			)
 		}
 
-		return this.prisma.order.update({
-			where: { id: orderId },
-			data: { status: 'COMPLETED' }
-		})
+		const earning = await this.calculateDriverEarnings(
+			order.price.toNumber(),
+			driverId
+		)
+
+		const [updatedOrder] = await this.prisma.$transaction([
+			this.prisma.order.update({
+				where: { id: orderId },
+				data: { status: 'COMPLETED' }
+			}),
+
+			this.prisma.driverProfile.update({
+				where: { id: driverId },
+				data: {
+					balance: {
+						increment: earning
+					}
+				}
+			})
+		])
+
+		return updatedOrder
 	}
 
 	async getMyEarnings(driverId: string) {
@@ -543,9 +624,54 @@ export class DriverService {
 	async updateOrderStatus(
 		driverId: string,
 		orderId: string,
-		status: OrderStatus
+		status: OrderStatus,
+		dto?: GeoCoordinatesDto
 	) {
 		const order = await this.verifyOrderOwnership(driverId, orderId)
+
+		if (status === 'ARRIVED') {
+			if (!dto) {
+				throw new BadRequestException(
+					'Geo coordinates are required for this status.'
+				)
+			}
+
+			const timeToTripMs = new Date(order.trip_datetime).getTime() - Date.now()
+			const thirtyMinsMs = 30 * 60 * 1000
+
+			if (timeToTripMs > thirtyMinsMs) {
+				throw new BadRequestException(
+					'You can mark arrival no earlier than 30 minutes before the trip.'
+				)
+			}
+
+			const waypoints = order.routeWaypoints as any[]
+			const pointA = waypoints[0]
+			const distance = this.calculateDistance(
+				dto?.lat,
+				dto?.lng,
+				pointA.lat,
+				pointA.lng
+			)
+			if (distance > 1) {
+				if (!dto.force) {
+					throw new BadRequestException(
+						`You are ${distance.toFixed(1)}km away from the pickup point. Please get closer or use 'force' confirmation.`
+					)
+				} else {
+					const driver = await this.prisma.driverProfile.findUnique({
+						where: { id: driverId },
+						select: { name: true }
+					})
+					await this.notificationsService.sendDriverGeoMismatchAlert(
+						order,
+						driver?.name || 'Unknown Driver',
+						distance,
+						'pickup'
+					)
+				}
+			}
+		}
 
 		const allowedTransitions = {
 			ACCEPTED: ['ON_THE_WAY'],
@@ -568,7 +694,8 @@ export class DriverService {
 	async reportClientNoShow(
 		driverId: string,
 		orderId: string,
-		photoPath: string
+		photoPath: string,
+		dto: GeoCoordinatesDto
 	) {
 		const order = await this.verifyOrderOwnership(driverId, orderId)
 
@@ -610,5 +737,122 @@ export class DriverService {
 
 			return updatedOrder
 		})
+	}
+
+	async cancelOrder(
+		driverId: string,
+		orderId: string,
+		reason: string,
+		photoPath?: string
+	) {
+		const order = await this.verifyOrderOwnership(driverId, orderId)
+
+		const hoursUntilTrip =
+			(new Date(order.trip_datetime).getTime() - Date.now()) / (1000 * 60 * 60)
+
+		if (hoursUntilTrip < 48) {
+			throw new BadRequestException(
+				'You can only cancel an order at least 48 hours in advance.'
+			)
+		}
+
+		const driver = await this.prisma.driverProfile.findUnique({
+			where: { id: driverId },
+			select: { name: true }
+		})
+
+		const updatedOrder = await this.prisma.order.update({
+			where: { id: orderId },
+			data: {
+				status: 'NEW',
+				driverId: null,
+				car_id: null
+			}
+		})
+
+		await this.notificationsService.sendDriverCancellationAlert(
+			updatedOrder,
+			driver?.name || 'Driver ' + driverId.substring(0, 5),
+			reason,
+			photoPath
+		)
+
+		return updatedOrder
+	}
+
+	async requestChange(driverId: string, orderId: string, comment: string) {
+		const order = await this.verifyOrderOwnership(driverId, orderId)
+
+		const driver = await this.prisma.driverProfile.findUnique({
+			where: { id: driverId },
+			select: { name: true }
+		})
+
+		const updatedOrder = await this.prisma.order.update({
+			where: { id: orderId },
+			data: {
+				changeRequestComment: comment,
+				status: 'PENDING_MANUAL_CONFIRMATION'
+			}
+		})
+
+		await this.notificationsService.sendDriverChangeRequestAlert(
+			updatedOrder,
+			driver?.name || 'Driver ' + driverId.substring(0, 5),
+			comment
+		)
+
+		return { message: 'Change request submitted. Operator will contact you.' }
+	}
+
+	async getSupportContact() {
+		const phoneAsNumber = this.pricingService.getSetting('SUPPORT_PHONE_DRIVER')
+
+		if (phoneAsNumber === undefined) {
+			console.warn(
+				'SUPPORT_PHONE_DRIVER is not set in PricingSettings. Returning fallback.'
+			)
+
+			return { phone: '+00000000000' }
+		}
+
+		const phoneString = `+${String(phoneAsNumber)}`
+
+		return { phone: phoneString }
+	}
+
+	async getCarOptions(driverId: string, carId: string) {
+		await this.verifyCarOwnership(driverId, carId)
+
+		return this.prisma.carOption.findMany({
+			where: { carId: carId },
+			include: {
+				option: true
+			}
+		})
+	}
+
+	async setCarOptions(driverId: string, carId: string, dto: SetCarOptionsDto) {
+		await this.verifyCarOwnership(driverId, carId)
+
+		const optionsToCreate = dto.options.map(opt => ({
+			carId: carId,
+			optionId: opt.optionId,
+			quantity: opt.quantity
+		}))
+
+		await this.prisma.$transaction(async tx => {
+			await tx.carOption.deleteMany({
+				where: { carId: carId }
+			})
+
+			if (optionsToCreate.length > 0) {
+				await tx.carOption.createMany({
+					data: optionsToCreate
+				})
+			}
+		})
+
+		return this.getCarOptions(driverId, carId)
 	}
 }

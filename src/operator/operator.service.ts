@@ -7,7 +7,9 @@ import {
 import { User } from '@prisma/client'
 import { verify } from 'argon2'
 import { DriverService } from 'src/driver/driver.service'
+import { EmailService } from 'src/email/email.service'
 import { PaymentService } from 'src/payment/payment.service'
+import { PdfService } from 'src/pdf/pdf.service'
 import { PrismaService } from 'src/prisma.service'
 import { AssignOrderDto } from './dto/assign-order.dto'
 import { RefundOrderDto } from './dto/refund-order.dto'
@@ -17,7 +19,9 @@ export class OperatorService {
 	constructor(
 		private prisma: PrismaService,
 		private paymentService: PaymentService,
-		private driverService: DriverService
+		private driverService: DriverService,
+		private pdfService: PdfService,
+		private emailService: EmailService
 	) {}
 
 	async getDriversWithEarnings() {
@@ -85,12 +89,14 @@ export class OperatorService {
 
 		const isOperatorDriver = driver.user.role === 'OPERATOR'
 
-		const allowedTypeIds = driver.allowedVehicleTypes.map(vt => vt.id)
+		if (!dto.force) {
+			const allowedTypeIds = driver.allowedVehicleTypes.map(vt => vt.id)
 
-		if (!isOperatorDriver && !allowedTypeIds.includes(order.vehicleTypeId)) {
-			throw new BadRequestException(
-				'Driver is not allowed to take orders of this vehicle class.'
-			)
+			if (!isOperatorDriver && !allowedTypeIds.includes(order.vehicleTypeId)) {
+				throw new BadRequestException(
+					"Driver is not allowed to take orders of this vehicle class. (Use 'force' to override)"
+				)
+			}
 		}
 
 		let carToAssignId: string | null = null
@@ -156,5 +162,89 @@ export class OperatorService {
 			where: { id: orderId },
 			data: { status: 'CANCELLED' }
 		})
+	}
+
+	async reassignOrder(orderId: string, dto: AssignOrderDto) {
+		const order = await this.prisma.order.findUnique({ where: { id: orderId } })
+		if (
+			!order ||
+			!['NEW', 'PENDING_MANUAL_CONFIRMATION', 'ACCEPTED'].includes(order.status)
+		) {
+			throw new NotFoundException('Order not found or cannot be reassigned.')
+		}
+
+		const driver = await this.prisma.driverProfile.findUnique({
+			where: { id: dto.driverId },
+			include: {
+				cars: { where: { verification_status: 'APPROVED' } },
+				allowedVehicleTypes: { select: { id: true } },
+				user: { select: { role: true } }
+			}
+		})
+
+		if (!driver || driver.status !== 1) {
+			throw new BadRequestException('Driver not found or not approved.')
+		}
+
+		const isOperatorDriver = driver.user.role === 'OPERATOR'
+
+		if (!dto.force) {
+			const allowedTypeIds = driver.allowedVehicleTypes.map(vt => vt.id)
+			if (!isOperatorDriver && !allowedTypeIds.includes(order.vehicleTypeId)) {
+				throw new BadRequestException(
+					"Driver is not allowed to take orders of this vehicle class. (Use 'force' to override)"
+				)
+			}
+		}
+
+		let carToAssignId: string | null = null
+		if (driver.cars.length > 0) {
+			const exactMatchCar = driver.cars.find(
+				c => c.vehicle_type_id === order.vehicleTypeId
+			)
+			carToAssignId = exactMatchCar ? exactMatchCar.id : driver.cars[0].id
+		} else if (!isOperatorDriver) {
+			throw new BadRequestException('Driver has no approved cars.')
+		}
+
+		const updatedOrder = await this.prisma.order.update({
+			where: { id: orderId },
+			data: {
+				driverId: dto.driverId,
+				car_id: carToAssignId,
+				status: 'ACCEPTED'
+			},
+
+			include: {
+				selectedOptions: { include: { option: true } }
+			}
+		})
+
+		if (!updatedOrder.customerEmail) {
+			console.warn(
+				`Order ${updatedOrder.id} reassigned, but no customerEmail to send new voucher.`
+			)
+			return updatedOrder
+		}
+
+		try {
+			const pdfBuffer = await this.pdfService.generateVoucher(
+				updatedOrder,
+				'en'
+			)
+
+			await this.emailService.sendVoucher(
+				updatedOrder.customerEmail,
+				updatedOrder,
+				pdfBuffer
+			)
+		} catch (error) {
+			console.error(
+				`Failed to send NEW VOUCHER for reassigned order ${updatedOrder.id}`,
+				error
+			)
+		}
+
+		return updatedOrder
 	}
 }

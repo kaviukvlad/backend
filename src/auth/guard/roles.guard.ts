@@ -20,7 +20,6 @@ export class RolesGuard implements CanActivate {
 			[context.getHandler(), context.getClass()]
 		)
 
-		// Якщо ролі не вказані — не обмежуємо доступ цим гардом
 		if (!requiredRoles || requiredRoles.length === 0) {
 			return true
 		}
@@ -28,8 +27,6 @@ export class RolesGuard implements CanActivate {
 		const { user } = context.switchToHttp().getRequest<{ user: User }>()
 
 		if (!user) {
-			// Аутентифікація повинна бути оброблена JwtAuthGuard; тут можемо кидати 401 або 403.
-			// Краще кинути Unauthorized, але залишу Forbidden, якщо хочеш суворішу поведінку:
 			throw new UnauthorizedException('User is not authenticated')
 		}
 

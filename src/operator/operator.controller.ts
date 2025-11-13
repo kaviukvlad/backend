@@ -60,4 +60,12 @@ export class OperatorController {
 	) {
 		return this.operatorService.refundOrder(orderId, dto, operator)
 	}
+
+	@Post('orders/:id/reassign')
+	@ApiOperation({
+		summary: 'Re-assign an order to a new driver (sends new voucher)'
+	})
+	reassignOrder(@Param('id') orderId: string, @Body() dto: AssignOrderDto) {
+		return this.operatorService.reassignOrder(orderId, dto)
+	}
 }

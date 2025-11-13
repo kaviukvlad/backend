@@ -156,4 +156,14 @@ export class CreateOrderDto {
 	@IsString()
 	@IsOptional()
 	return_flight_number?: string
+
+	@ApiProperty({
+		description:
+			'[Admin/Operator Only] Create order manually without payment intent',
+		required: false,
+		default: false
+	})
+	@IsOptional()
+	@IsBoolean()
+	isManualCreation?: boolean
 }

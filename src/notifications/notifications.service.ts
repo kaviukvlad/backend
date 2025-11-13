@@ -54,4 +54,64 @@ export class NotificationsService {
 			caption
 		)
 	}
+
+	async sendDriverCancellationAlert(
+		order: Order,
+		driverName: string,
+		reason: string,
+		photoPath?: string
+	) {
+		const message = `
+<b>Водій Скасував Замовлення</b>
+<b>Замовлення:</b> <code>${order.id}</code>
+<b>Водій:</b> ${driverName || 'Невідомий'}
+<b>Причина:</b> ${reason}
+
+Замовлення повернуто у чергу (статус 'NEW').
+    `
+
+		if (photoPath) {
+			await this.telegramService.sendPhoto(
+				this.operatorChatId,
+				photoPath,
+				message
+			)
+		} else {
+			await this.telegramService.sendMessage(this.operatorChatId, message)
+		}
+	}
+
+	async sendDriverChangeRequestAlert(
+		order: Order,
+		driverName: string,
+		comment: string
+	) {
+		const message = `
+<b>Запит на Зміну Замовлення</b>
+<b>Замовлення:</b> <code>${order.id}</code>
+<b>Водій:</b> ${driverName || 'Невідомий'}
+<b>Коментар водія:</b> ${comment}
+
+Будь ласка, зв'яжіться з водієм.
+    `
+		await this.telegramService.sendMessage(this.operatorChatId, message)
+	}
+
+	async sendDriverGeoMismatchAlert(
+		order: Order,
+		driverName: string,
+		distance: number,
+		locationType: 'pickup' | 'dropoff'
+	) {
+		const locationName = locationType === 'pickup' ? 'посадки' : 'висадки'
+
+		const message = `
+<b>Гео-Алерт (Force) </b>
+<b>Замовлення:</b> <code>${order.id}</code>
+<b>Водій:</b> ${driverName}
+<b>Дія:</b> Водій підтвердив дію "на місці" примусово.
+<b>Невідповідність:</b> Водій знаходиться за <b>${distance.toFixed(1)} км</b> від точки ${locationName}.
+    `
+		await this.telegramService.sendMessage(this.operatorChatId, message)
+	}
 }

@@ -8,6 +8,7 @@ import {
 	Post,
 	Query,
 	Req,
+	Res,
 	UseGuards,
 	ValidationPipe
 } from '@nestjs/common'
@@ -18,6 +19,7 @@ import {
 	ApiTags
 } from '@nestjs/swagger'
 import { UserRole } from '@prisma/client'
+import type { Response } from 'express'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { CurrentClient } from 'src/auth/decorators/client.decorators'
 import { JwtAuthOptionalGuard } from 'src/auth/guard/jwt-auth-optional.guard'
@@ -173,7 +175,7 @@ export class OrdersController {
 
 	@Post()
 	@ApiOperation({ summary: 'Create a new order (For Admins)' })
-	@Auth(UserRole.ADMIN)
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
 	async createAsAdmin(
 		@Body(new ValidationPipe()) createOrderDto: CreateOrderDto
 	) {
@@ -275,14 +277,14 @@ export class OrdersController {
 
 	@Patch(':id')
 	@ApiOperation({ summary: 'Update existing order' })
-	@Auth(UserRole.ADMIN)
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
 	async update(@Param('id') id: string, @Body() dto: UpdateOrderDto) {
 		return this.ordersService.update(id, dto)
 	}
 
 	@Delete(':id')
 	@ApiOperation({ summary: 'Cancel order (soft delete)' })
-	@Auth(UserRole.ADMIN)
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
 	async remove(@Param('id') id: string) {
 		return this.ordersService.remove(id)
 	}
@@ -347,5 +349,31 @@ export class OrdersController {
 	})
 	async calculatePrice(@Body(new ValidationPipe()) dto: CalculatePriceDto) {
 		return this.pricingService.calculatePriceRange(dto)
+	}
+
+	@Get('export')
+	@ApiOperation({ summary: 'Export orders to CSV (Superadmin only)' })
+	@ApiResponse({
+		status: 200,
+		description: 'Returns a CSV file with orders.'
+	})
+	@ApiResponse({
+		status: 403,
+		description: 'Access denied.'
+	})
+	@Auth(UserRole.ADMIN)
+	async exportOrders(
+		@Query() dto: SearchOrderDto,
+		@Res({ passthrough: true }) res: Response
+	) {
+		const csvString = await this.ordersService.exportOrders(dto)
+
+		const date = new Date().toISOString().split('T')[0]
+		const filename = `orders-export-${date}.csv`
+
+		res.setHeader('Content-Type', 'text/csv')
+		res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+
+		res.send('\uFEFF' + csvString)
 	}
 }

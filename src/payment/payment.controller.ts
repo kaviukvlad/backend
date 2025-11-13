@@ -143,26 +143,25 @@ export class PaymentController {
 					)
 
 					console.log('Voucher sending is temporarily disabled.')
-					/* try {
-            const pdfBuffer = await this.pdfService.generateVoucher(
-              newOrder,
-              'en'
-            )
-            await this.emailService.sendVoucher(
-              newOrder.customerEmail!,
-              newOrder,
-              pdfBuffer
-            )
-            console.log(
-              `Successfully sent voucher to ${newOrder.customerEmail}`
-            )
-          } catch (emailError) {
-            console.error(
-              `FAILED TO SEND VOUCHER for order ${newOrder.id}`,
-              emailError
-            )
-          }
-          */
+					try {
+						const pdfBuffer = await this.pdfService.generateVoucher(
+							newOrder,
+							'en'
+						)
+						await this.emailService.sendVoucher(
+							newOrder.customerEmail!,
+							newOrder,
+							pdfBuffer
+						)
+						console.log(
+							`Successfully sent voucher to ${newOrder.customerEmail}`
+						)
+					} catch (emailError) {
+						console.error(
+							`FAILED TO SEND VOUCHER for order ${newOrder.id}`,
+							emailError
+						)
+					}
 				} else {
 					console.error(
 						`Order creation for PI ${paymentIntent.id} returned a job ID instead of an order object.`,

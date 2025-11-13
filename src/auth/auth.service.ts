@@ -26,6 +26,10 @@ export class AuthService {
 	async login(dto: LoginDto) {
 		const { password, ...user } = await this.validateUser(dto)
 
+		if (user.role === 'DRIVER' && user.driverProfile?.isBlocked) {
+			throw new UnauthorizedException('Your driver account has been blocked.')
+		}
+
 		const tokens = await this.issueTokens(user.id)
 		return {
 			user,
