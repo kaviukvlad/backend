@@ -43,7 +43,7 @@ RUN apk add --no-cache \
     harfbuzz \
     ca-certificates \
     ttf-freefont \
-    mesa-dri-gallium
+    mesa-gbm 
 
 
 
