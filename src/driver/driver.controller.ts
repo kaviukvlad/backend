@@ -600,22 +600,6 @@ export class DriverController {
 		return this.driverService.requestChange(driverId, orderId, dto.comment)
 	}
 
-	@Get('support-contact')
-	@Auth()
-	@ApiOperation({ summary: 'Get support service phone number' })
-	@ApiResponse({
-		status: 200,
-		description: 'Support phone number.',
-		schema: {
-			example: {
-				phone: '+380931234567'
-			}
-		}
-	})
-	async getSupportContact() {
-		return this.driverService.getSupportContact()
-	}
-
 	@Get('cars/:id/options')
 	@Auth()
 	@ApiOperation({ summary: 'Get available options for a specific car' })

@@ -805,22 +805,6 @@ export class DriverService {
 		return { message: 'Change request submitted. Operator will contact you.' }
 	}
 
-	async getSupportContact() {
-		const phoneAsNumber = this.pricingService.getSetting('SUPPORT_PHONE_DRIVER')
-
-		if (phoneAsNumber === undefined) {
-			console.warn(
-				'SUPPORT_PHONE_DRIVER is not set in PricingSettings. Returning fallback.'
-			)
-
-			return { phone: '+00000000000' }
-		}
-
-		const phoneString = `+${String(phoneAsNumber)}`
-
-		return { phone: phoneString }
-	}
-
 	async getCarOptions(driverId: string, carId: string) {
 		await this.verifyCarOwnership(driverId, carId)
 
