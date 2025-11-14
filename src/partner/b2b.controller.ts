@@ -49,7 +49,7 @@ export class B2bController {
 		})
 
 		if ('id' in newOrder) {
-			const pdfBuffer = await this.pdfService.generateVoucher(newOrder, locale)
+			const pdfBuffer = await this.pdfService.getVoucherHtml(newOrder, locale)
 			await this.emailService.sendVoucher(
 				createOrderDto.customerEmail,
 				newOrder,
