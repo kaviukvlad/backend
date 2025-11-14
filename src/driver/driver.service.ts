@@ -721,7 +721,7 @@ export class DriverService {
 					'Geo coordinates are required for this status.'
 				)
 			}
-
+			/*
 			const timeToTripMs = new Date(order.trip_datetime).getTime() - Date.now()
 			const thirtyMinsMs = 30 * 60 * 1000
 
@@ -729,7 +729,7 @@ export class DriverService {
 				throw new BadRequestException(
 					'You can mark arrival no earlier than 30 minutes before the trip.'
 				)
-			}
+			}*/
 
 			const waypoints = order.routeWaypoints as any[]
 			const pointA = waypoints[0]

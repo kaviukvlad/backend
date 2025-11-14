@@ -38,6 +38,21 @@ export class OperatorService {
 					select: {
 						name: true
 					}
+				},
+
+				cars: {
+					select: {
+						id: true,
+						brand: true,
+						model: true,
+						license_plate: true,
+						verification_status: true,
+						vehicle_type: {
+							select: {
+								code: true
+							}
+						}
+					}
 				}
 			}
 		})
@@ -229,23 +244,24 @@ export class OperatorService {
 		// --- ВІДПРАВКА ЛИСТА ТИМЧАСОВО ВИМКНЕНА ---
 		console.log(
 			`Voucher email sending is SKIPPED for REASSIGNED order ${updatedOrder.id}.`
-		) /*
-    try {
-      // Використовуємо 'en' (або іншу мову за замовчуванням)
-      const voucherHtml = await this.pdfService.getVoucherHtml(updatedOrder, 'en')
-      
-      await this.emailService.sendVoucher(
-        updatedOrder.customerEmail,
-        updatedOrder,
-        voucherHtml
-      )
-    } catch (error) {
-      console.error(
-        `Failed to send NEW VOUCHER for reassigned order ${updatedOrder.id}`,
-        error
-      )
-    }
-    */ // --- КІНЕЦЬ ВИМКНЕНОГО БЛОКУ ---
+		)
+		try {
+			// Використовуємо 'en' (або іншу мову за замовчуванням)
+			const voucherHtml = await this.pdfService.getVoucherHtml(
+				updatedOrder,
+				'en'
+			)
+			await this.emailService.sendVoucher(
+				updatedOrder.customerEmail,
+				updatedOrder,
+				voucherHtml
+			)
+		} catch (error) {
+			console.error(
+				`Failed to send NEW VOUCHER for reassigned order ${updatedOrder.id}`,
+				error
+			)
+		}
 		return updatedOrder
 	}
 }

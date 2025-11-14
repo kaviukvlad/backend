@@ -22,7 +22,18 @@ export class EmailService {
 			this.configService.get<string>('API_BASE_URL') || 'http://localhost:3000'
 	}
 
-	async sendVoucher(customerEmail: string, order: Order, voucherHtml: string) {
+	async sendVoucher(
+		customerEmail: string | null | undefined,
+		order: Order,
+		voucherHtml: string
+	) {
+		if (!customerEmail || customerEmail.trim() === '') {
+			console.warn(
+				`[EmailService] SKIPPING voucher for Order ${order.id}: customerEmail is missing or empty.`
+			)
+			return
+		}
+
 		await this.transporter.sendMail({
 			from: this.configService.get<string>('MAIL_FROM'),
 			to: customerEmail,

@@ -91,6 +91,23 @@ export class OrdersService {
 		}
 
 		if (paymentIntentId) {
+			let finalCustomerEmail = dto.customerEmail
+			if (
+				(!finalCustomerEmail || finalCustomerEmail.trim() === '') &&
+				clientId
+			) {
+				console.log(
+					`[OrdersService] Email not found in DTO, fetching from ClientID: ${clientId}`
+				)
+				const client = await this.prisma.clientProfile.findUnique({
+					where: { id: clientId },
+					include: { user: { select: { email: true } } }
+				})
+				if (client) {
+					finalCustomerEmail = client.user.email
+				}
+			}
+
 			const optionsPrice = await this.pricingService['calculateOptionsPrice'](
 				dto.selectedOptions
 			)
@@ -117,7 +134,7 @@ export class OrdersService {
 				data: {
 					clientId: clientId || null,
 					paymentIntentId: paymentIntentId,
-					customerEmail: dto.customerEmail,
+					customerEmail: finalCustomerEmail,
 					regionId: dto.regionId,
 					vehicleTypeId: dto.vehicleTypeId,
 					isAvailableToAll: dto.isAvailableToAll ?? false,
@@ -165,7 +182,7 @@ export class OrdersService {
 					data: {
 						clientId: clientId || null,
 						paymentIntentId: `${paymentIntentId}_return`,
-						customerEmail: dto.customerEmail,
+						customerEmail: finalCustomerEmail,
 						regionId: dto.regionId,
 						vehicleTypeId: dto.vehicleTypeId,
 						isAvailableToAll: dto.isAvailableToAll ?? false,
@@ -173,7 +190,7 @@ export class OrdersService {
 						distanceInKm: returnDist,
 						durationInMinutes: returnDur,
 						price: finalReturnPrice,
-						status: 'NEW', // <--- ЗАВЖДИ 'NEW', БО ОПЛАЧЕНО
+						status: 'NEW',
 						trip_datetime: new Date(dto.return_trip_datetime),
 						notes: dto.notes,
 						passenger_count: dto.passenger_count,
