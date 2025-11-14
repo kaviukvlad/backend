@@ -54,7 +54,7 @@ export class PricingService implements OnModuleInit {
 	async calculatePriceRange(dto: CalculatePriceDto, locale: string = 'en') {
 		const fallbackLocale = 'en'
 
-		const [allVehicleTypes, region, geoData, pricePerKm, minimumFare] =
+		const [allVehicleTypes, region, pricePerKm, minimumFare] =
 			await Promise.all([
 				this.prisma.vehicleType.findMany({
 					include: {
@@ -67,42 +67,43 @@ export class PricingService implements OnModuleInit {
 					where: { id: dto.regionId },
 					include: { breakpoints: { orderBy: { distanceKm: 'asc' } } }
 				}),
-				this.geoService.getDistanceAndDuration(dto.waypoints),
 				this.settings.get('GLOBAL_PRICE_PER_KM'),
-
 				this.settings.get('GLOBAL_MINIMUM_FARE') || this.GLOBAL_MINIMUM_FARE
 			])
 
 		if (!region || !region.latitude || !region.longitude) {
 			throw new BadRequestException(
-				'Invalid region or coordinates are not set.'
+				'Invalid region or depot coordinates (latitude/longitude) are not set.'
 			)
 		}
 		if (!pricePerKm || !minimumFare) {
 			throw new BadRequestException('Global pricing settings are missing.')
 		}
 
+		const depotPoint = { lat: region.latitude, lng: region.longitude }
 		const pickupPoint = dto.waypoints[0]
 		const dropoffPoint = dto.waypoints[dto.waypoints.length - 1]
-		const maxDistanceToCenterKm = Math.max(
-			this.calculateDistance(
-				region.latitude,
-				region.longitude,
-				pickupPoint.lat,
-				pickupPoint.lng
-			),
-			this.calculateDistance(
-				region.latitude,
-				region.longitude,
-				dropoffPoint.lat,
-				dropoffPoint.lng
-			)
+
+		const [tripGeoData, deadheadGeoData] = await Promise.all([
+			this.geoService.getDistanceAndDuration(dto.waypoints),
+
+			this.geoService.getDistanceAndDuration([depotPoint, pickupPoint])
+		])
+
+		const tripDistance = tripGeoData.distanceInKm
+		const deadheadDistance = deadheadGeoData.distanceInKm
+		const totalDistance = tripDistance + deadheadDistance
+
+		const depotToBDistance = this.calculateDistance(
+			depotPoint.lat,
+			depotPoint.lng,
+			dropoffPoint.lat,
+			dropoffPoint.lng
 		)
 		const breakpointCoefficient = this.getCoefficient(
-			maxDistanceToCenterKm,
+			depotToBDistance,
 			region.breakpoints
 		)
-		const { distanceInKm } = geoData
 
 		const realTypePrices = allVehicleTypes
 			.filter(vt => vt.code !== 'BUS')
@@ -110,7 +111,7 @@ export class PricingService implements OnModuleInit {
 				const vehicleMultiplier = vehicleType.priceMultiplier.toNumber()
 
 				let calculatedPrice =
-					distanceInKm * pricePerKm * breakpointCoefficient * vehicleMultiplier
+					totalDistance * pricePerKm * breakpointCoefficient * vehicleMultiplier
 
 				if (calculatedPrice < minimumFare) {
 					calculatedPrice = minimumFare
@@ -131,7 +132,7 @@ export class PricingService implements OnModuleInit {
 				}
 			})
 
-		let anyPrice = distanceInKm * pricePerKm
+		let anyPrice = tripDistance * pricePerKm
 		if (anyPrice < minimumFare) {
 			anyPrice = minimumFare
 		}
@@ -151,19 +152,17 @@ export class PricingService implements OnModuleInit {
 		dto: CreateOrderDto,
 		isAnyClassOrder: boolean = false
 	): Promise<number> {
-		const [vehicleType, region, geoData, pricePerKm, minimumFare] =
-			await Promise.all([
-				this.prisma.vehicleType.findUnique({
-					where: { id: dto.vehicleTypeId }
-				}),
-				this.prisma.region.findUnique({
-					where: { id: dto.regionId },
-					include: { breakpoints: { orderBy: { distanceKm: 'asc' } } }
-				}),
-				this.geoService.getDistanceAndDuration(dto.waypoints),
-				this.settings.get('GLOBAL_PRICE_PER_KM'),
-				this.settings.get('GLOBAL_MINIMUM_FARE') || this.GLOBAL_MINIMUM_FARE
-			])
+		const [vehicleType, region, pricePerKm, minimumFare] = await Promise.all([
+			this.prisma.vehicleType.findUnique({
+				where: { id: dto.vehicleTypeId }
+			}),
+			this.prisma.region.findUnique({
+				where: { id: dto.regionId },
+				include: { breakpoints: { orderBy: { distanceKm: 'asc' } } }
+			}),
+			this.settings.get('GLOBAL_PRICE_PER_KM'),
+			this.settings.get('GLOBAL_MINIMUM_FARE') || this.GLOBAL_MINIMUM_FARE
+		])
 
 		if (
 			!vehicleType ||
@@ -176,37 +175,39 @@ export class PricingService implements OnModuleInit {
 			throw new BadRequestException('Invalid data for price calculation.')
 		}
 
+		const depotPoint = { lat: region.latitude, lng: region.longitude }
 		const pickupPoint = dto.waypoints[0]
 		const dropoffPoint = dto.waypoints[dto.waypoints.length - 1]
-		const maxDistanceToCenterKm = Math.max(
-			this.calculateDistance(
-				region.latitude,
-				region.longitude,
-				pickupPoint.lat,
-				pickupPoint.lng
-			),
-			this.calculateDistance(
-				region.latitude,
-				region.longitude,
-				dropoffPoint.lat,
-				dropoffPoint.lng
-			)
+
+		const [tripGeoData, deadheadGeoData] = await Promise.all([
+			this.geoService.getDistanceAndDuration(dto.waypoints),
+
+			this.geoService.getDistanceAndDuration([depotPoint, pickupPoint])
+		])
+
+		const tripDistance = tripGeoData.distanceInKm
+		const deadheadDistance = deadheadGeoData.distanceInKm
+		const totalDistance = tripDistance + deadheadDistance
+
+		const depotToBDistance = this.calculateDistance(
+			depotPoint.lat,
+			depotPoint.lng,
+			dropoffPoint.lat,
+			dropoffPoint.lng
 		)
 
 		const breakpointCoeff = this.getCoefficient(
-			maxDistanceToCenterKm,
+			depotToBDistance,
 			region.breakpoints
 		)
 		const vehicleCoeff = vehicleType.priceMultiplier.toNumber()
 
 		const finalBreakpointCoeff = isAnyClassOrder ? 1.0 : breakpointCoeff
 		const finalVehicleCoeff = isAnyClassOrder ? 1.0 : vehicleCoeff
+		const finalDistance = isAnyClassOrder ? tripDistance : totalDistance
 
 		let calculatedPrice =
-			geoData.distanceInKm *
-			pricePerKm *
-			finalBreakpointCoeff *
-			finalVehicleCoeff
+			finalDistance * pricePerKm * finalBreakpointCoeff * finalVehicleCoeff
 
 		if (calculatedPrice < minimumFare) {
 			calculatedPrice = minimumFare

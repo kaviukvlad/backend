@@ -37,8 +37,10 @@ import { DriverService } from './driver.service'
 import { CancelOrderDriverDto } from './dto/cancel-order-driver.dto'
 import { ChangeRequestDto } from './dto/change-request.dto'
 import { GeoCoordinatesDto } from './dto/geo-coordinates.dto'
+import { RequestPayoutDto } from './dto/request-payout.dto'
 import { SetCarOptionsDto } from './dto/set-car-options.dto'
 import { UpdateDriverDto } from './dto/update-driver.dto'
+import { DriverOrdersInterceptor } from './interceptors/driver-orders.interceptor'
 
 export const multerStorageOptions = (folder: string) =>
 	diskStorage({
@@ -280,6 +282,7 @@ export class DriverController {
 
 	@Get('orders/available')
 	@Auth(UserRole.DRIVER, UserRole.OPERATOR)
+	@UseInterceptors(DriverOrdersInterceptor)
 	@ApiOperation({ summary: 'Get list of available orders' })
 	@HttpCode(HttpStatus.OK)
 	@ApiResponse({
@@ -631,5 +634,22 @@ export class DriverController {
 		@Body() dto: SetCarOptionsDto
 	) {
 		return this.driverService.setCarOptions(driverId, carId, dto)
+	}
+
+	@Get('payout-history')
+	@Auth(UserRole.DRIVER)
+	@ApiOperation({ summary: 'Get my payout requests history' })
+	getPayoutHistory(@CurrentDriver('id') driverId: string) {
+		return this.driverService.getPayoutHistory(driverId)
+	}
+
+	@Post('payout-request')
+	@Auth(UserRole.DRIVER)
+	@ApiOperation({ summary: 'Request a new payout' })
+	requestPayout(
+		@CurrentDriver('id') driverId: string,
+		@Body() dto: RequestPayoutDto
+	) {
+		return this.driverService.requestPayout(driverId, dto)
 	}
 }

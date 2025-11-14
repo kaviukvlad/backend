@@ -114,4 +114,15 @@ export class NotificationsService {
     `
 		await this.telegramService.sendMessage(this.operatorChatId, message)
 	}
+
+	async sendPayoutRequestAlert(driverName: string, amount: number) {
+		const message = `
+<b>Новий Запит на Виплату</b>
+<b>Водій:</b> ${driverName}
+<b>Сума:</b> ${amount.toFixed(2)} EUR
+
+Запит очікує на схвалення в адмін-панелі.
+    `
+		await this.telegramService.sendMessage(this.operatorChatId, message)
+	}
 }

@@ -320,8 +320,6 @@ export class OrdersService {
 				`Failed to create payment intent: ${error.message}`
 			)
 		}
-
-		// --- КІНЕЦЬ ВИПРАВЛЕННЯ ---
 	}
 
 	async findAll(dto: SearchOrderDto) {
@@ -366,7 +364,15 @@ export class OrdersService {
 						option: true
 					}
 				},
-				driver: true,
+				driver: {
+					include: {
+						user: {
+							select: {
+								phone: true
+							}
+						}
+					}
+				},
 				region: true,
 				vehicleType: {
 					select: {

@@ -12,6 +12,7 @@ import { NotificationsService } from 'src/notifications/notifications.service'
 import { PricingService } from 'src/pricing/pricing.service'
 import { PrismaService } from 'src/prisma.service'
 import { GeoCoordinatesDto } from './dto/geo-coordinates.dto'
+import { RequestPayoutDto } from './dto/request-payout.dto'
 import { SetCarOptionsDto } from './dto/set-car-options.dto'
 import { UpdateDriverDto } from './dto/update-driver.dto'
 
@@ -353,7 +354,6 @@ export class DriverService {
 	}
 
 	async getAvailableOrders(driverId: string) {
-		// --- ДОДАНО ЛОГУВАННЯ ---
 		console.log(
 			`[Filter] getAvailableOrders викликано для Водія ID: ${driverId.substring(0, 8)}...`
 		)
@@ -399,7 +399,6 @@ export class DriverService {
 
 		const isOperator = driverProfile.user.role === 'OPERATOR'
 
-		// --- ДОДАНО ЛОГУВАННЯ ---
 		console.log(
 			`[Filter] Водій: ${driverProfile.name} (Оператор: ${isOperator}), Регіон: ${driverProfile.regionId}`
 		)
@@ -429,7 +428,6 @@ export class DriverService {
 			}
 		})
 
-		// --- ДОДАНО ЛОГУВАННЯ ---
 		console.log(
 			`[Filter] Знайдено ${ordersInRegion.length} замовлень зі статусом 'NEW' в регіоні. Початок фільтрації...`
 		)
@@ -439,7 +437,6 @@ export class DriverService {
 
 		const suitableOrders = ordersInRegion.filter(
 			(order: OrderWithSelectedOptions) => {
-				// --- ДОДАНО ДЕТАЛЬНЕ ЛОГУВАННЯ ФІЛЬТРУ ---
 				const orderIdShort = order.id.substring(0, 8)
 				console.log(`[Filter] === Перевірка Замовлення ${orderIdShort} ===`)
 
@@ -508,11 +505,9 @@ export class DriverService {
 					`[Filter] Замовлення ${orderIdShort} ПРИЙНЯТО: Всі перевірки пройдені.`
 				)
 				return true
-				// --- КІНЕЦЬ ДЕТАЛЬНОГО ЛОГУВАННЯ ---
 			}
 		)
 
-		// --- ДОДАНО ЛОГУВАННЯ ---
 		console.log(
 			`[Filter] Фільтрацію завершено. Кількість підходящих замовлень: ${suitableOrders.length}`
 		)
@@ -721,8 +716,8 @@ export class DriverService {
 					'Geo coordinates are required for this status.'
 				)
 			}
-			/*
-			const timeToTripMs = new Date(order.trip_datetime).getTime() - Date.now()
+
+			/*const timeToTripMs = new Date(order.trip_datetime).getTime() - Date.now()
 			const thirtyMinsMs = 30 * 60 * 1000
 
 			if (timeToTripMs > thirtyMinsMs) {
@@ -924,5 +919,56 @@ export class DriverService {
 		})
 
 		return this.getCarOptions(driverId, carId)
+	}
+
+	async requestPayout(driverId: string, dto: RequestPayoutDto) {
+		const driver = await this.prisma.driverProfile.findUnique({
+			where: { id: driverId },
+			select: { balance: true, name: true }
+		})
+
+		if (!driver) {
+			throw new NotFoundException('Driver profile not found.')
+		}
+
+		const requestedAmount = new Prisma.Decimal(dto.amount)
+
+		if (driver.balance.lessThan(requestedAmount)) {
+			throw new BadRequestException('Insufficient funds on balance.')
+		}
+
+		const payoutRequest = await this.prisma.$transaction(async tx => {
+			await tx.driverProfile.update({
+				where: { id: driverId },
+				data: {
+					balance: {
+						decrement: requestedAmount
+					}
+				}
+			})
+
+			const request = await tx.payoutRequest.create({
+				data: {
+					driverId: driverId,
+					amount: requestedAmount,
+					status: 'PENDING'
+				}
+			})
+			return request
+		})
+
+		/*await this.notificationsService.sendPayoutRequestAlert(
+			driver.name,
+			requestedAmount.toNumber()
+		)*/
+
+		return payoutRequest
+	}
+
+	async getPayoutHistory(driverId: string) {
+		return this.prisma.payoutRequest.findMany({
+			where: { driverId: driverId },
+			orderBy: { createdAt: 'desc' }
+		})
 	}
 }

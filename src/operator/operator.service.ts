@@ -4,7 +4,7 @@ import {
 	NotFoundException,
 	UnauthorizedException
 } from '@nestjs/common'
-import { User } from '@prisma/client'
+import { PayoutStatus, User } from '@prisma/client'
 import { verify } from 'argon2'
 import { DriverService } from 'src/driver/driver.service'
 import { EmailService } from 'src/email/email.service'
@@ -13,6 +13,7 @@ import { PdfService } from 'src/pdf/pdf.service'
 import { PrismaService } from 'src/prisma.service'
 import { AssignOrderDto } from './dto/assign-order.dto'
 import { RefundOrderDto } from './dto/refund-order.dto'
+import { RejectPayoutDto } from './dto/reject-payout.dto'
 
 @Injectable()
 export class OperatorService {
@@ -263,5 +264,82 @@ export class OperatorService {
 			)
 		}
 		return updatedOrder
+	}
+
+	async getPayoutRequests(status?: PayoutStatus) {
+		return this.prisma.payoutRequest.findMany({
+			where: {
+				status: status || 'PENDING'
+			},
+			include: {
+				driver: {
+					select: { name: true, user: { select: { email: true } } }
+				}
+			},
+			orderBy: { createdAt: 'asc' }
+		})
+	}
+
+	async approvePayout(payoutId: string, operatorUserId: string) {
+		const operator = await this.prisma.operatorProfile.findUniqueOrThrow({
+			where: { userId: operatorUserId }
+		})
+
+		const payout = await this.prisma.payoutRequest.findUniqueOrThrow({
+			where: { id: payoutId }
+		})
+
+		if (payout.status !== 'PENDING') {
+			throw new BadRequestException('Request is not in PENDING state.')
+		}
+
+		return this.prisma.payoutRequest.update({
+			where: { id: payoutId },
+			data: {
+				status: 'APPROVED',
+				processedAt: new Date(),
+				processedByOperatorId: operator.id
+			}
+		})
+	}
+
+	async rejectPayout(
+		payoutId: string,
+		operatorUserId: string,
+		dto: RejectPayoutDto
+	) {
+		const operator = await this.prisma.operatorProfile.findUniqueOrThrow({
+			where: { userId: operatorUserId }
+		})
+
+		const payout = await this.prisma.payoutRequest.findUniqueOrThrow({
+			where: { id: payoutId }
+		})
+
+		if (payout.status !== 'PENDING') {
+			throw new BadRequestException('Request is not in PENDING state.')
+		}
+
+		return this.prisma.$transaction(async tx => {
+			await tx.driverProfile.update({
+				where: { id: payout.driverId },
+				data: {
+					balance: {
+						increment: payout.amount
+					}
+				}
+			})
+
+			const rejectedPayout = await tx.payoutRequest.update({
+				where: { id: payoutId },
+				data: {
+					status: 'REJECTED',
+					processedAt: new Date(),
+					processedByOperatorId: operator.id,
+					rejectionReason: dto.reason
+				}
+			})
+			return rejectedPayout
+		})
 	}
 }

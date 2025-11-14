@@ -1,16 +1,26 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common'
+import {
+	Body,
+	Controller,
+	Get,
+	Param,
+	Patch,
+	Post,
+	Query
+} from '@nestjs/common'
 import {
 	ApiBearerAuth,
 	ApiOperation,
+	ApiQuery,
 	ApiResponse,
 	ApiTags
 } from '@nestjs/swagger'
 import type { User } from '@prisma/client'
-import { UserRole } from '@prisma/client'
+import { PayoutStatus, UserRole } from '@prisma/client'
 import { Auth } from 'src/auth/decorators/auth.decorators'
 import { CurrentUser } from 'src/auth/decorators/user.decorators'
 import { AssignOrderDto } from './dto/assign-order.dto'
 import { RefundOrderDto } from './dto/refund-order.dto'
+import { RejectPayoutDto } from './dto/reject-payout.dto'
 import { OperatorService } from './operator.service'
 
 @Controller('operator')
@@ -67,5 +77,31 @@ export class OperatorController {
 	})
 	reassignOrder(@Param('id') orderId: string, @Body() dto: AssignOrderDto) {
 		return this.operatorService.reassignOrder(orderId, dto)
+	}
+
+	@Get('payout-requests')
+	@ApiOperation({ summary: 'Get list of payout requests (default: PENDING)' })
+	@ApiQuery({ name: 'status', enum: PayoutStatus, required: false })
+	getPayoutRequests(@Query('status') status?: PayoutStatus) {
+		return this.operatorService.getPayoutRequests(status)
+	}
+
+	@Patch('payout-requests/:id/approve')
+	@ApiOperation({ summary: 'Approve a payout request' })
+	approvePayout(
+		@Param('id') payoutId: string,
+		@CurrentUser('id') operatorUserId: string
+	) {
+		return this.operatorService.approvePayout(payoutId, operatorUserId)
+	}
+
+	@Patch('payout-requests/:id/reject')
+	@ApiOperation({ summary: 'Reject a payout request' })
+	rejectPayout(
+		@Param('id') payoutId: string,
+		@CurrentUser('id') operatorUserId: string,
+		@Body() dto: RejectPayoutDto
+	) {
+		return this.operatorService.rejectPayout(payoutId, operatorUserId, dto)
 	}
 }
