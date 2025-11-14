@@ -48,7 +48,9 @@ export class GeoService {
 			const element = response.data.rows[0].elements[0]
 
 			if (element.status !== 'OK') {
-				throw new Error(`Distance calculation error: ${element.status}`)
+				throw new BadRequestException(
+					`Distance calculation error: ${element.status}`
+				)
 			}
 
 			return {
