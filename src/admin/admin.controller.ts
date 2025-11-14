@@ -24,6 +24,7 @@ import { CreateDriverByAdminDto } from './dto/create-driver-by-admin.dto'
 import { CreateOperatorDto } from './dto/create-operator.dto'
 import { UpdateCarStatusDto } from './dto/update-car-status.dto'
 import { UpdateDocumentStatusDto } from './dto/update-document-status.dto'
+import { UpdateDriverByAdminDto } from './dto/update-driver-by-admin.dto'
 import { UpdateDriverCommissionDto } from './dto/update-driver-commission.dto'
 import { UpdateDriverVehicleTypesDto } from './dto/update-driver-vehicle-types.dto'
 
@@ -426,5 +427,48 @@ export class AdminController {
 	@Auth(UserRole.ADMIN)
 	blockDriver(@Param('id') driverId: string, @Body() dto: BlockDriverDto) {
 		return this.adminService.blockDriver(driverId, dto)
+	}
+
+	@Get('drivers/:id')
+	@ApiOperation({ summary: 'Get single driver details (for Admin/Operator)' })
+	@ApiParam({ name: 'id', description: 'Driver Profile ID' })
+	@ApiResponse({
+		status: 200,
+		description: 'Driver details retrieved.'
+	})
+	@ApiResponse({ status: 404, description: 'Driver profile not found.' })
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
+	getDriverById(@Param('id') driverId: string) {
+		return this.adminService.getDriverById(driverId)
+	}
+
+	@Patch('drivers/:id')
+	@ApiOperation({ summary: 'Update driver details (for Admin/Operator)' })
+	@ApiParam({ name: 'id', description: 'Driver Profile ID' })
+	@ApiResponse({
+		status: 200,
+		description: 'Driver updated successfully.'
+	})
+	@ApiResponse({ status: 404, description: 'Driver profile not found.' })
+	@ApiResponse({ status: 409, description: 'Email or phone already exists.' })
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
+	updateDriver(
+		@Param('id') driverId: string,
+		@Body() dto: UpdateDriverByAdminDto
+	) {
+		return this.adminService.updateDriver(driverId, dto)
+	}
+
+	@Delete('drivers/:id')
+	@ApiOperation({ summary: 'Delete a driver (for Admin/Operator)' })
+	@ApiParam({ name: 'id', description: 'Driver Profile ID' })
+	@ApiResponse({
+		status: 200,
+		description: 'Driver deleted successfully.'
+	})
+	@ApiResponse({ status: 404, description: 'Driver profile not found.' })
+	@Auth(UserRole.ADMIN, UserRole.OPERATOR)
+	deleteDriver(@Param('id') driverId: string) {
+		return this.adminService.deleteDriver(driverId)
 	}
 }

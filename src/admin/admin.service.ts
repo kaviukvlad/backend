@@ -16,6 +16,7 @@ import { CreateBreakpointDto } from './dto/create-breakpoint.dto'
 import { CreateDriverByAdminDto } from './dto/create-driver-by-admin.dto'
 import { CreateOperatorDto } from './dto/create-operator.dto'
 import { UpdateCarStatusDto } from './dto/update-car-status.dto'
+import { UpdateDriverByAdminDto } from './dto/update-driver-by-admin.dto'
 import { UpdateDriverCommissionDto } from './dto/update-driver-commission.dto'
 import { UpdateDriverVehicleTypesDto } from './dto/update-driver-vehicle-types.dto'
 
@@ -367,5 +368,101 @@ export class AdminService {
 				status: true
 			}
 		})
+	}
+
+	async getDriverById(driverId: string) {
+		const driverProfile = await this.prisma.driverProfile.findUnique({
+			where: { id: driverId },
+			include: {
+				user: {
+					select: {
+						email: true,
+						phone: true
+					}
+				},
+				region: {
+					select: {
+						id: true,
+						name: true
+					}
+				},
+				allowedVehicleTypes: {
+					select: {
+						id: true,
+						code: true
+					}
+				}
+			}
+		})
+
+		if (!driverProfile) {
+			throw new NotFoundException(
+				`Driver profile with ID ${driverId} not found.`
+			)
+		}
+		return driverProfile
+	}
+
+	async updateDriver(driverId: string, dto: UpdateDriverByAdminDto) {
+		const driverProfile = await this.getDriverById(driverId)
+
+		try {
+			return await this.prisma.$transaction(async tx => {
+				if (dto.email || dto.phone) {
+					await tx.user.update({
+						where: { id: driverProfile.userId },
+						data: {
+							email: dto.email,
+							phone: dto.phone
+						}
+					})
+				}
+
+				const updatedProfile = await tx.driverProfile.update({
+					where: { id: driverId },
+					data: {
+						name: dto.name,
+						status: dto.status,
+						regionId: dto.regionId
+					}
+				})
+				return updatedProfile
+			})
+		} catch (error) {
+			if (
+				error instanceof Prisma.PrismaClientKnownRequestError &&
+				error.code === 'P2002'
+			) {
+				const target = error.meta?.target as string[]
+				if (target.includes('email')) {
+					throw new ConflictException('User with this email already exists.')
+				}
+				if (target.includes('phone')) {
+					throw new ConflictException(
+						'User with this phone number already exists.'
+					)
+				}
+			}
+			throw error
+		}
+	}
+
+	async deleteDriver(driverId: string) {
+		const driverProfile = await this.prisma.driverProfile.findUnique({
+			where: { id: driverId },
+			select: { userId: true }
+		})
+
+		if (!driverProfile) {
+			throw new NotFoundException(
+				`Driver profile with ID ${driverId} not found.`
+			)
+		}
+
+		await this.prisma.user.delete({
+			where: { id: driverProfile.userId }
+		})
+
+		return { message: 'Driver deleted successfully.' }
 	}
 }
