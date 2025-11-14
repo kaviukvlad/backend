@@ -353,6 +353,11 @@ export class DriverService {
 	}
 
 	async getAvailableOrders(driverId: string) {
+		// --- ДОДАНО ЛОГУВАННЯ ---
+		console.log(
+			`[Filter] getAvailableOrders викликано для Водія ID: ${driverId.substring(0, 8)}...`
+		)
+
 		const driverProfile = await this.prisma.driverProfile.findUnique({
 			where: { id: driverId },
 			include: {
@@ -394,6 +399,11 @@ export class DriverService {
 
 		const isOperator = driverProfile.user.role === 'OPERATOR'
 
+		// --- ДОДАНО ЛОГУВАННЯ ---
+		console.log(
+			`[Filter] Водій: ${driverProfile.name} (Оператор: ${isOperator}), Регіон: ${driverProfile.regionId}`
+		)
+
 		if (driverProfile.cars.length === 0 && !isOperator) {
 			throw new ForbiddenException(
 				'You have no approved cars to accept orders.'
@@ -419,8 +429,20 @@ export class DriverService {
 			}
 		})
 
+		// --- ДОДАНО ЛОГУВАННЯ ---
+		console.log(
+			`[Filter] Знайдено ${ordersInRegion.length} замовлень зі статусом 'NEW' в регіоні. Початок фільтрації...`
+		)
+		if (ordersInRegion.length === 0) {
+			return []
+		}
+
 		const suitableOrders = ordersInRegion.filter(
 			(order: OrderWithSelectedOptions) => {
+				// --- ДОДАНО ДЕТАЛЬНЕ ЛОГУВАННЯ ФІЛЬТРУ ---
+				const orderIdShort = order.id.substring(0, 8)
+				console.log(`[Filter] === Перевірка Замовлення ${orderIdShort} ===`)
+
 				const carCapacityFits =
 					driverProfile.cars.some((car: CarWithAvailableOptions) => {
 						const capacityOk =
@@ -442,22 +464,57 @@ export class DriverService {
 						})
 					}) || isOperator
 
-				if (!carCapacityFits) return false
+				if (!carCapacityFits && !isOperator) {
+					console.log(
+						`[Filter] Замовлення ${orderIdShort} ВІДХИЛЕНО: Жодне авто не підійшло (місткість або опції).`
+					)
+					return false
+				}
+				if (isOperator && !carCapacityFits) {
+					console.log(
+						`[Filter] Замовлення ${orderIdShort}: Перевірка місткості пропущена (Оператор).`
+					)
+				}
 
 				if (order.isAvailableToAll) {
+					console.log(
+						`[Filter] Замовлення ${orderIdShort} ПРИЙНЯТО: isAvailableToAll = true.`
+					)
 					return true
 				}
 
 				if (isOperator) {
+					console.log(
+						`[Filter] Замовлення ${orderIdShort} ПРИЙНЯТО: Користувач є Оператором.`
+					)
 					return true
 				}
 
 				const allowedVehicleTypeIds = driverProfile.allowedVehicleTypes.map(
 					vt => vt.id
 				)
+				const isClassAllowed = allowedVehicleTypeIds.includes(
+					order.vehicleTypeId
+				)
 
-				return allowedVehicleTypeIds.includes(order.vehicleTypeId)
+				if (!isClassAllowed) {
+					console.log(
+						`[Filter] Замовлення ${orderIdShort} ВІДХІЛЕНО: Клас ${order.vehicleTypeId} не дозволений водію.`
+					)
+					return false
+				}
+
+				console.log(
+					`[Filter] Замовлення ${orderIdShort} ПРИЙНЯТО: Всі перевірки пройдені.`
+				)
+				return true
+				// --- КІНЕЦЬ ДЕТАЛЬНОГО ЛОГУВАННЯ ---
 			}
+		)
+
+		// --- ДОДАНО ЛОГУВАННЯ ---
+		console.log(
+			`[Filter] Фільтрацію завершено. Кількість підходящих замовлень: ${suitableOrders.length}`
 		)
 
 		const ordersWithEarnings = await Promise.all(
@@ -665,14 +722,14 @@ export class DriverService {
 				)
 			}
 
-			/*const timeToTripMs = new Date(order.trip_datetime).getTime() - Date.now()
+			const timeToTripMs = new Date(order.trip_datetime).getTime() - Date.now()
 			const thirtyMinsMs = 30 * 60 * 1000
 
 			if (timeToTripMs > thirtyMinsMs) {
 				throw new BadRequestException(
 					'You can mark arrival no earlier than 30 minutes before the trip.'
 				)
-			}*/
+			}
 
 			const waypoints = order.routeWaypoints as any[]
 			const pointA = waypoints[0]

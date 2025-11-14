@@ -22,25 +22,13 @@ export class EmailService {
 			this.configService.get<string>('API_BASE_URL') || 'http://localhost:3000'
 	}
 
-	async sendVoucher(customerEmail: string, order: Order, pdfBuffer: Buffer) {
+	async sendVoucher(customerEmail: string, order: Order, voucherHtml: string) {
 		await this.transporter.sendMail({
 			from: this.configService.get<string>('MAIL_FROM'),
 			to: customerEmail,
 			subject: `Ваш ваучер на трансфер №${order.id.toUpperCase()}`,
-			html: `
-        <h1>Дякуємо за ваше замовлення!</h1>
-        <p>Шановний клієнте,</p>
-        <p>Ваш трансфер підтверджено. Будь ласка, знайдіть ваш ваучер у вкладенні до цього листа.</p>
-        <p><strong>Номер бронювання:</strong> ${order.id.toUpperCase()}</p>
-        <p>Бажаємо приємної поїздки!</p>
-      `,
-			attachments: [
-				{
-					filename: `voucher-${order.id}.pdf`,
-					content: pdfBuffer,
-					contentType: 'application/pdf'
-				}
-			]
+
+			html: voucherHtml
 		})
 	}
 

@@ -92,8 +92,14 @@ export class PaymentController {
 			)
 		}
 
+		// --- ЛОГУВАННЯ 1 ---
+		console.log(`[Webhook] Отримано подію Stripe: ${event.type}`)
+
 		if (event.type === 'payment_intent.succeeded') {
 			const paymentIntent = event.data.object as Stripe.PaymentIntent
+
+			// --- ЛОГУВАННЯ 2 ---
+			console.log(`[Webhook] Обробка PaymentIntent: ${paymentIntent.id}`)
 
 			const metadata = paymentIntent.metadata
 			const clientId = metadata?.client_id
@@ -103,7 +109,7 @@ export class PaymentController {
 
 			if (!chunkCount) {
 				console.warn(
-					`Missing order_details_count in metadata for PI: ${paymentIntent.id}`
+					`[Webhook] Missing order_details_count in metadata for PI: ${paymentIntent.id}`
 				)
 				return { received: true }
 			}
@@ -113,7 +119,7 @@ export class PaymentController {
 				const chunk = metadata[`order_details_${i + 1}`]
 				if (!chunk) {
 					console.error(
-						`Missing metadata chunk order_details_${i + 1} for PI: ${paymentIntent.id}`
+						`[Webhook] Missing metadata chunk order_details_${i + 1} for PI: ${paymentIntent.id}`
 					)
 					return { received: true }
 				}
@@ -125,61 +131,70 @@ export class PaymentController {
 				orderDetailsDto = JSON.parse(orderDetailsRaw) as CreateOrderDto
 			} catch (err) {
 				console.error(
-					`Failed to parse order_details for PI: ${paymentIntent.id}`,
+					`[Webhook] Failed to parse order_details for PI: ${paymentIntent.id}`,
 					err
 				)
 				return { received: true }
 			}
 
 			try {
+				// --- ЛОГУВАННЯ 3 ---
+				console.log(
+					`[Webhook] Виклик OrdersService.create для PI: ${paymentIntent.id}`
+				)
+
 				const newOrder = await this.ordersService.create(orderDetailsDto, {
 					clientId: clientId || undefined,
 					paymentIntentId: paymentIntent.id
 				})
 
 				if ('id' in newOrder) {
+					// --- ЛОГУВАННЯ 4 (КЛЮЧОВЕ) ---
 					console.log(
-						`Successfully created order in DB (ID: ${newOrder.id}) for PI: ${paymentIntent.id}`
+						`[Webhook] УСПІХ: Створено Замовлення ID: ${newOrder.id} зі СТАТУСОМ: ${newOrder.status} for PI: ${paymentIntent.id}`
 					)
 
-					console.log(
-						`Voucher generation is temporarily disabled for order ${newOrder.id}.`
-					)
-					/*	try {
-						const pdfBuffer = await this.pdfService.generateVoucher(
+					// (Код відправки HTML ваучера, який ви вже додали)
+					try {
+						const voucherHtml = await this.pdfService.getVoucherHtml(
 							newOrder,
 							'en'
 						)
 						await this.emailService.sendVoucher(
 							newOrder.customerEmail!,
 							newOrder,
-							pdfBuffer
+							voucherHtml
 						)
 						console.log(
-							`Successfully sent voucher to ${newOrder.customerEmail}`
+							`[Webhook] Successfully sent voucher to ${newOrder.customerEmail}`
 						)
 					} catch (emailError) {
 						console.error(
-							`FAILED TO SEND VOUCHER for order ${newOrder.id}`,
+							`[Webhook] FAILED TO SEND VOUCHER for order ${newOrder.id}`,
 							emailError
 						)
-					}*/
+					}
 				} else {
+					// --- ЛОГУВАННЯ 5 (ПОМИЛКА) ---
 					console.error(
-						`Order creation for PI ${paymentIntent.id} returned a job ID instead of an order object.`,
+						`[Webhook] ПОМИЛКА: OrdersService.create повернув jobId замість замовлення for PI: ${paymentIntent.id}.`,
 						newOrder
 					)
 				}
 			} catch (error) {
+				// --- ЛОГУВАННЯ 6 (ПОМИЛКА) ---
 				console.error(
-					`ERROR creating order from webhook for PI: ${paymentIntent.id}`,
+					`[Webhook] ПОМИЛКА СТВОРЕННЯ ЗАМОВЛЕННЯ з вебхука for PI: ${paymentIntent.id}`,
 					error
 				)
 
-				throw error
+				throw error // Важливо "кинути" помилку, щоб Stripe знав про збій
 			}
 		} else {
-			console.log(` Unhandled Stripe event type: ${event.type}`)
+			// --- ЛОГУВАННЯ 7 (Ігнор) ---
+			console.log(
+				`[Webhook] Проігноровано подію ${event.type} (не payment_intent.succeeded)`
+			)
 		}
 
 		return { received: true }

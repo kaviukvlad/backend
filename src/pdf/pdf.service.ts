@@ -1,39 +1,12 @@
 import { Injectable } from '@nestjs/common'
 import { Order } from '@prisma/client'
 import { I18nService } from 'nestjs-i18n'
-import * as puppeteer from 'puppeteer-core'
-
-import chromium from '@sparticuz/chromium'
 
 @Injectable()
 export class PdfService {
 	constructor(private readonly i18n: I18nService) {}
 
-	async generateVoucher(order: Order, locale: string): Promise<Buffer> {
-		const browser = await puppeteer.launch({
-			args: chromium.args,
-			executablePath: await chromium.executablePath(),
-			defaultViewport: null,
-			headless: true
-		})
-
-		const page = await browser.newPage()
-
-		const htmlContent = await this.getVoucherHtml(order, locale)
-
-		await page.setContent(htmlContent, { waitUntil: 'networkidle0' })
-
-		const pdfBuffer = await page.pdf({
-			format: 'A4',
-			printBackground: true
-		})
-
-		await browser.close()
-
-		return Buffer.from(pdfBuffer)
-	}
-
-	private async getVoucherHtml(order: Order, locale: string): Promise<string> {
+	public async getVoucherHtml(order: Order, locale: string): Promise<string> {
 		const tripDate = new Date(order.trip_datetime).toLocaleString(locale, {
 			day: '2-digit',
 			month: 'long',

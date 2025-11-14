@@ -90,69 +90,6 @@ export class OrdersService {
 			throw new NotFoundException(`Region with ID ${dto.regionId} not found.`)
 		}
 
-		const vehicleType = await this.prisma.vehicleType.findUnique({
-			where: { id: dto.vehicleTypeId },
-			select: { code: true }
-		})
-		if (!vehicleType) {
-			throw new BadRequestException(
-				`VehicleType with ID ${dto.vehicleTypeId} not found.`
-			)
-		}
-
-		if (vehicleType.code === 'BUS' || dto.isManualCreation) {
-			const { distanceInKm, durationInMinutes } =
-				await this.geoService.getDistanceAndDuration(dto.waypoints)
-
-			const optionsFromDb = dto.selectedOptions?.length
-				? await this.prisma.orderOption.findMany({
-						where: {
-							id: { in: dto.selectedOptions.map(o => o.optionId) }
-						}
-					})
-				: []
-
-			const manualOrder = await this.prisma.order.create({
-				data: {
-					routeWaypoints: dto.waypoints as any,
-					customerEmail: dto.customerEmail,
-					trip_datetime: tripTime,
-					passenger_count: dto.passenger_count,
-					regionId: dto.regionId,
-					flight_number: dto.flight_number,
-					notes: dto.notes,
-					luggage_standard: dto.luggage_standard || 0,
-					luggage_small: dto.luggage_small || 0,
-					distanceInKm,
-					durationInMinutes,
-					vehicleTypeId: dto.vehicleTypeId,
-					clientId: clientId || null,
-					partnerId: partner?.id || null,
-					isAvailableToAll: false,
-					price: 0,
-					status: 'PENDING_MANUAL_CONFIRMATION',
-					paymentIntentId: null,
-					bookingCode: randomUUID(),
-					selectedOptions: {
-						create: dto.selectedOptions?.map(opt => {
-							const dbOption = optionsFromDb.find(o => o.id === opt.optionId)!
-							return {
-								quantity: opt.quantity || 1,
-								priceAtTimeOfOrder: dbOption.price,
-								option: { connect: { id: opt.optionId } }
-							}
-						})
-					}
-				}
-			})
-
-			if (vehicleType.code === 'BUS') {
-				await this.notificationsService.sendBusOrderNotification(manualOrder)
-			}
-
-			return manualOrder
-		}
-
 		if (paymentIntentId) {
 			const optionsPrice = await this.pricingService['calculateOptionsPrice'](
 				dto.selectedOptions
@@ -236,7 +173,7 @@ export class OrdersService {
 						distanceInKm: returnDist,
 						durationInMinutes: returnDur,
 						price: finalReturnPrice,
-						status: 'NEW',
+						status: 'NEW', // <--- ЗАВЖДИ 'NEW', БО ОПЛАЧЕНО
 						trip_datetime: new Date(dto.return_trip_datetime),
 						notes: dto.notes,
 						passenger_count: dto.passenger_count,
@@ -259,6 +196,69 @@ export class OrdersService {
 			}
 
 			return outboundOrder
+		}
+
+		const vehicleType = await this.prisma.vehicleType.findUnique({
+			where: { id: dto.vehicleTypeId },
+			select: { code: true }
+		})
+		if (!vehicleType) {
+			throw new BadRequestException(
+				`VehicleType with ID ${dto.vehicleTypeId} not found.`
+			)
+		}
+
+		if (vehicleType.code === 'BUS' || dto.isManualCreation) {
+			const { distanceInKm, durationInMinutes } =
+				await this.geoService.getDistanceAndDuration(dto.waypoints)
+
+			const optionsFromDb = dto.selectedOptions?.length
+				? await this.prisma.orderOption.findMany({
+						where: {
+							id: { in: dto.selectedOptions.map(o => o.optionId) }
+						}
+					})
+				: []
+
+			const manualOrder = await this.prisma.order.create({
+				data: {
+					routeWaypoints: dto.waypoints as any,
+					customerEmail: dto.customerEmail,
+					trip_datetime: tripTime,
+					passenger_count: dto.passenger_count,
+					regionId: dto.regionId,
+					flight_number: dto.flight_number,
+					notes: dto.notes,
+					luggage_standard: dto.luggage_standard || 0,
+					luggage_small: dto.luggage_small || 0,
+					distanceInKm,
+					durationInMinutes,
+					vehicleTypeId: dto.vehicleTypeId,
+					clientId: clientId || null,
+					partnerId: partner?.id || null,
+					isAvailableToAll: false,
+					price: 0,
+					status: 'PENDING_MANUAL_CONFIRMATION',
+					paymentIntentId: null,
+					bookingCode: randomUUID(),
+					selectedOptions: {
+						create: dto.selectedOptions?.map(opt => {
+							const dbOption = optionsFromDb.find(o => o.id === opt.optionId)!
+							return {
+								quantity: opt.quantity || 1,
+								priceAtTimeOfOrder: dbOption.price,
+								option: { connect: { id: opt.optionId } }
+							}
+						})
+					}
+				}
+			})
+
+			if (vehicleType.code === 'BUS') {
+				await this.notificationsService.sendBusOrderNotification(manualOrder)
+			}
+
+			return manualOrder
 		}
 
 		const finalPrice = await this.pricingService.calculateFinalPrice(
@@ -303,6 +303,8 @@ export class OrdersService {
 				`Failed to create payment intent: ${error.message}`
 			)
 		}
+
+		// --- КІНЕЦЬ ВИПРАВЛЕННЯ ---
 	}
 
 	async findAll(dto: SearchOrderDto) {
@@ -476,6 +478,12 @@ export class OrdersService {
 		}
 
 		return this.prisma.$transaction(async tx => {
+			if (dto.selectedOptions) {
+				await tx.orderToOption.deleteMany({
+					where: { orderId: id }
+				})
+			}
+
 			const { selectedOptions, waypoints, price, ...restDto } = dto
 
 			const updatedOrder = await tx.order.update({
@@ -487,16 +495,19 @@ export class OrdersService {
 					...(dto.trip_datetime && {
 						trip_datetime: new Date(dto.trip_datetime)
 					}),
-					selectedOptions: {
-						create: dto.selectedOptions?.map(opt => {
-							const dbOption = optionsFromDb.find(o => o.id === opt.optionId)!
-							return {
-								optionId: opt.optionId,
-								quantity: opt.quantity || 1,
-								priceAtTimeOfOrder: dbOption.price
-							}
-						})
-					}
+
+					...(dto.selectedOptions && {
+						selectedOptions: {
+							create: dto.selectedOptions?.map(opt => {
+								const dbOption = optionsFromDb.find(o => o.id === opt.optionId)!
+								return {
+									optionId: opt.optionId,
+									quantity: opt.quantity || 1,
+									priceAtTimeOfOrder: dbOption.price
+								}
+							})
+						}
+					})
 				}
 			})
 
