@@ -2,6 +2,7 @@ import {
 	Body,
 	Controller,
 	Delete,
+	ForbiddenException,
 	Get,
 	Param,
 	Patch,
@@ -46,6 +47,12 @@ export class OrdersController {
 		@Body(new ValidationPipe()) createOrderDto: CreateOrderDto,
 		@Req() req
 	) {
+		if (createOrderDto.isManualCreation) {
+			throw new ForbiddenException(
+				'Manual creation is not allowed for clients.'
+			)
+		}
+
 		const user = req.user as any
 		const clientId = user?.clientProfile?.id
 
