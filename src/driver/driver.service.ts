@@ -558,6 +558,34 @@ export class DriverService {
 	) {
 		const order = await this.verifyOrderOwnership(driverId, orderId)
 
+		const waypoints = order.routeWaypoints as any[]
+		const pointB = waypoints[waypoints.length - 1]
+		const distance = this.calculateDistance(
+			dto.lat,
+			dto.lng,
+			pointB.lat,
+			pointB.lng
+		)
+
+		if (distance > 1) {
+			if (!dto.force) {
+				throw new BadRequestException(
+					`You are ${distance.toFixed(1)}km away from the dropoff point. Please get closer or use 'force' confirmation.`
+				)
+			} else {
+				const driver = await this.prisma.driverProfile.findUnique({
+					where: { id: driverId },
+					select: { name: true }
+				})
+				await this.notificationsService.sendDriverGeoMismatchAlert(
+					order,
+					driver?.name || 'Unknown Driver',
+					distance,
+					'dropoff'
+				)
+			}
+		}
+
 		if (order.status !== 'IN_PROGRESS') {
 			throw new BadRequestException(
 				'You can only complete an order that is in progress.'
