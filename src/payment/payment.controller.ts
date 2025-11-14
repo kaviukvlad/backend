@@ -11,6 +11,7 @@ import {
 	Req
 } from '@nestjs/common'
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { SkipThrottle } from '@nestjs/throttler'
 import type { Request } from 'express'
 import { EmailService } from 'src/email/email.service'
 import { CreateOrderDto } from 'src/orders/dto/create-order.dto'
@@ -18,8 +19,6 @@ import { OrdersService } from 'src/orders/orders.service'
 import { PdfService } from 'src/pdf/pdf.service'
 import Stripe from 'stripe'
 import { PaymentService } from './payment.service'
-
-import { SkipThrottle } from '@nestjs/throttler'
 
 @ApiTags('Payment')
 @Controller('payment')
@@ -154,27 +153,34 @@ export class PaymentController {
 						`[Webhook] УСПІХ: Створено Замовлення ID: ${newOrder.id} зі СТАТУСОМ: ${newOrder.status} for PI: ${paymentIntent.id}`
 					)
 
-					// (Код відправки HTML ваучера, який ви вже додали)
-					try {
-						const voucherHtml = await this.pdfService.getVoucherHtml(
-							newOrder,
-							'en'
-						)
-						await this.emailService.sendVoucher(
-							newOrder.customerEmail!,
-							newOrder,
-							voucherHtml
-						)
-						console.log(
-							`[Webhook] Successfully sent voucher to ${newOrder.customerEmail}`
-						)
-					} catch (emailError) {
-						console.error(
-							`[Webhook] FAILED TO SEND VOUCHER for order ${newOrder.id}`,
-							emailError
-						)
-					}
+					// --- ВІДПРАВКА ЛИСТА ТИМЧАСОВО ВИМКНЕНА ---
+					console.log(
+						`Voucher email sending is SKIPPED for order ${newOrder.id}.`
+					)
+					/*
+          try {
+            const voucherHtml = await this.pdfService.getVoucherHtml(
+              newOrder,
+              'en'
+            )
+            await this.emailService.sendVoucher(
+              newOrder.customerEmail!,
+              newOrder,
+              voucherHtml
+            )
+            console.log(
+              `Successfully sent voucher to ${newOrder.customerEmail}`
+            )
+          } catch (emailError) {
+            console.error(
+              `FAILED TO SEND VOUCHER for order ${newOrder.id}`,
+              emailError
+            )
+          }
+          */
+					// --- КІНЕЦЬ ВИМКНЕНОГО БЛОКУ ---
 				} else {
+					// <--- ДОДАНО ЗАКРИВАЮЧУ ДУЖКУ '}' ПЕРЕД 'else'
 					// --- ЛОГУВАННЯ 5 (ПОМИЛКА) ---
 					console.error(
 						`[Webhook] ПОМИЛКА: OrdersService.create повернув jobId замість замовлення for PI: ${paymentIntent.id}.`,
